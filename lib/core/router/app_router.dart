@@ -5,6 +5,7 @@ import 'package:belediye_otomasyon/features/buildings/presentation/screens/build
 import 'package:belediye_otomasyon/features/home/presentation/screens/home_screen.dart';
 import 'package:belediye_otomasyon/features/auth/presentation/screens/login_screen.dart';
 import 'package:belediye_otomasyon/features/auth/presentation/screens/register_screen.dart';
+import 'package:belediye_otomasyon/features/auth/presentation/screens/invite_complete_screen.dart';
 import 'package:belediye_otomasyon/features/maintenance/presentation/screens/maintenance_suggestions_screen.dart';
 import 'package:belediye_otomasyon/features/reports/presentation/screens/reports_screen.dart';
 import 'package:belediye_otomasyon/features/settings/presentation/screens/settings_screen.dart';
@@ -25,6 +26,13 @@ final GoRouter router = GoRouter(
       path: '/register',
       builder: (BuildContext context, GoRouterState state) {
         return const RegisterScreen();
+      },
+    ),
+    GoRoute(
+      path: '/invite/complete',
+      builder: (BuildContext context, GoRouterState state) {
+        final token = state.uri.queryParameters['token'] ?? '';
+        return InviteCompleteScreen(token: token);
       },
     ),
     ShellRoute(

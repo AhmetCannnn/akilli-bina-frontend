@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:belediye_otomasyon/features/employees/data/services/employee_api_service.dart';
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
 
 /// Çalışan sayısını getir
 Future<int> _getEmployeeCount(int buildingId) async {
@@ -20,67 +21,50 @@ class InfoTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(0, 16, 0, 0),
-          child: Text(
-            'Bina Bilgileri',
-            style: theme.typography.title?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Flexible(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Açıklama bölümü (eğer varsa)
-                if (building['description'] != null && building['description'].toString().trim().isNotEmpty) ...[
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                FluentIcons.text_document,
-                                size: 18,
-                                color: theme.accentColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Hakkında',
-                                style: theme.typography.subtitle?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.accentColor,
-                                ),
-                              ),
-                            ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(vertical: AppUiTokens.space16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Açıklama bölümü (eğer varsa)
+          if (building['description'] != null && building['description'].toString().trim().isNotEmpty) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(AppUiTokens.space16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          FluentIcons.text_document,
+                          size: 18,
+                          color: theme.accentColor,
+                        ),
+                        const SizedBox(width: AppUiTokens.space8),
+                        Text(
+                          'Hakkında',
+                          style: theme.typography.subtitle?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.accentColor,
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            building['description'].toString().trim(),
-                            style: theme.typography.body,
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                _BuildingInfoCard(building: building),
-              ],
+                    const SizedBox(height: AppUiTokens.space12),
+                    Text(
+                      building['description'].toString().trim(),
+                      style: theme.typography.body,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+            const SizedBox(height: AppUiTokens.space12),
+          ],
+          _BuildingInfoCard(building: building),
+        ],
+      ),
     );
   }
 }
@@ -94,7 +78,7 @@ class _BuildingInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppUiTokens.space16),
         child: Column(
           children: [
             _BuildingInfoItem(
@@ -103,21 +87,21 @@ class _BuildingInfoCard extends StatelessWidget {
               value: '${building['building_area'] ?? 0} m²',
               color: Colors.blue,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppUiTokens.space16),
             _BuildingInfoItem(
               icon: FluentIcons.stack,
               title: 'Kat Sayısı',
               value: '${building['floor_count'] ?? 0} Kat',
               color: Colors.purple,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppUiTokens.space16),
             _BuildingInfoItem(
               icon: FluentIcons.calendar,
               title: 'Yapım Yılı',
               value: '${building['construction_year'] ?? 0}',
               color: Colors.teal,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppUiTokens.space16),
             FutureBuilder<int>(
               future: _getEmployeeCount(building['id'] as int),
               builder: (context, snapshot) {
@@ -130,14 +114,14 @@ class _BuildingInfoCard extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppUiTokens.space16),
             _BuildingInfoItem(
               icon: FluentIcons.product_catalog,
               title: 'Demirbaş Sayısı',
               value: '${building['asset_count'] ?? 0}',
               color: Colors.green,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppUiTokens.space16),
             _BuildingInfoItem(
               icon: FluentIcons.car,
               title: 'Otopark Kapasitesi',
@@ -171,10 +155,10 @@ class _BuildingInfoItem extends StatelessWidget {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(AppUiTokens.space8),
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppUiTokens.radius8),
           ),
           child: Icon(
             icon,
@@ -182,7 +166,7 @@ class _BuildingInfoItem extends StatelessWidget {
             size: 20,
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppUiTokens.space12),
         Text(
           title,
           style: theme.typography.body?.copyWith(

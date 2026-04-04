@@ -1,9 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
+import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'add_maintenance_modal.dart';
 import '../providers/maintenance_provider.dart';
-import '../../data/services/maintenance_api_service.dart';
 import 'package:belediye_otomasyon/core/utils/modal_helpers.dart'
     show
         showDeleteDialog,
@@ -14,6 +15,8 @@ import 'package:belediye_otomasyon/core/utils/modal_helpers.dart'
         buildErrorCard;
 import '../../../../core/utils/api_error.dart';
 import '../../../../core/utils/backend_datetime.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_action_buttons.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
 import '../../../../features/buildings/presentation/providers/building_provider.dart';
 import 'package:belediye_otomasyon/core/widgets/removable_tag.dart'
     show RemovableTag;
@@ -52,20 +55,25 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final maintenanceAsync = ref.watch(allMaintenanceProvider);
+    final horizontalPad = PageHeader.horizontalPadding(context);
 
-    return ScaffoldPage(
+    return AppScaffoldPage(
       content: Container(
         color: theme.scaffoldBackgroundColor,
+        padding: EdgeInsets.only(
+          left: horizontalPad,
+          right: horizontalPad,
+          top: AppUiTokens.space8,
+          bottom: AppUiTokens.space12,
+        ),
         child: Column(
           children: [
-            // Başlık AppShell içinde yönetiliyor
-            const SizedBox(height: 8),
             Expanded(
               child: Column(
                 children: [
                   // Filtre ve Bakım Ekle Butonu
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.only(bottom: 16),
                     child: Row(
                       children: [
                         Icon(
@@ -99,20 +107,12 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
                           ),
                         ),
                         const Spacer(),
-                        Tooltip(
-                          message: 'Bakım Ekle',
-                          child: FilledButton(
-                            child: Row(
-                              children: const [
-                                Icon(FluentIcons.add, size: 14),
-                                SizedBox(width: 6),
-                                Text('Bakım Ekle'),
-                              ],
-                            ),
-                            onPressed: () {
-                              _showAddMaintenanceModal(context);
-                            },
-                          ),
+                        EntityAddButton(
+                          label: 'Bakım Ekle',
+                          tooltip: 'Bakım Ekle',
+                          onPressed: () {
+                            _showAddMaintenanceModal(context);
+                          },
                         ),
                       ],
                     ),
@@ -128,7 +128,7 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
                           children: [
                             // Özet Kartları
                             Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.only(bottom: 16),
                               child: Row(
                                 children: [
                                   Expanded(
@@ -198,7 +198,7 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
                                       ),
                                     )
                                   : ListView.builder(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                                      padding: EdgeInsets.zero,
                                       itemCount: filtered.length,
                                       itemBuilder: (context, index) {
                                         final maintenance = filtered[index];
@@ -606,14 +606,14 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
       title: 'Bakım Kaydını Sil',
       message: '"$title" kaydını silmek istediğinize emin misiniz?',
       onDelete: () async {
-        final success = await MaintenanceApiService().deleteMaintenance(maintenanceId);
-        return success;
+        await ref
+            .read(maintenanceControllerProvider.notifier)
+            .deleteMaintenance(maintenanceId);
+        return true;
       },
       successMessage: '"$title" başarıyla silindi.',
-      onSuccess: () {
-        // Refresh maintenance list
-        ref.invalidate(allMaintenanceProvider);
-      },
+      // Liste, MaintenanceController.deleteMaintenance içindeki refreshMaintenance ile güncellenir.
+      onSuccess: () {},
     );
   }
 
@@ -840,23 +840,11 @@ class _MaintenanceRecordCard extends StatelessWidget {
                     ),
                   ],
                   const Spacer(),
-                  Button(
-                    onPressed: onViewDetails,
-                    child: const Text('Detay'),
-                  ),
-                  const SizedBox(width: 8),
-                  Button(
-                    onPressed: onEdit,
-                    child: const Text('Düzenle'),
-                  ),
-                  const SizedBox(width: 8),
-                  Button(
-                    onPressed: onDelete,
-                    child: const Text('Sil'),
-                    style: ButtonStyle(
-                      backgroundColor: ButtonState.all(Colors.red),
-                      foregroundColor: ButtonState.all(Colors.white),
-                    ),
+                  EntityActionButtons(
+                    width: 170,
+                    onEdit: onEdit,
+                    onDelete: onDelete,
+                    onDetail: onViewDetails,
                   ),
                 ],
               ),

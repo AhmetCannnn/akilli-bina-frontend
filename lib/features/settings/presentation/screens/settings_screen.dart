@@ -1,4 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
+import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:belediye_otomasyon/core/utils/modal_helpers.dart'
     show showSuccessInfoBar, showErrorInfoBar, showDeleteDialog, buildModalTitle;
@@ -213,22 +215,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
+    final horizontalPad = PageHeader.horizontalPadding(context);
 
     if (_isLoading) {
-      return const ScaffoldPage(
-        content: Center(child: ProgressRing()),
+      return AppScaffoldPage(
+        content: Container(
+          color: theme.scaffoldBackgroundColor,
+          padding: EdgeInsets.only(
+            left: horizontalPad,
+            right: horizontalPad,
+            top: AppUiTokens.space8,
+            bottom: AppUiTokens.space12,
+          ),
+          child: const Center(child: ProgressRing()),
+        ),
       );
     }
 
-    return ScaffoldPage(
+    return AppScaffoldPage(
       content: Container(
         color: theme.scaffoldBackgroundColor,
+        padding: EdgeInsets.only(
+          left: horizontalPad,
+          right: horizontalPad,
+          top: AppUiTokens.space8,
+          bottom: AppUiTokens.space12,
+        ),
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.zero,
           children: [
             // Profil Kartı
             _buildProfileCard(theme),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppUiTokens.space12),
+            const SizedBox(height: AppUiTokens.space12),
             
             // Güvenlik
             Card(
@@ -241,7 +260,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: AppUiTokens.space12),
+            const SizedBox(height: AppUiTokens.space12),
             
             // Uygulama Tercihleri
             Card(
@@ -267,7 +287,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: AppUiTokens.space12),
+            const SizedBox(height: AppUiTokens.space12),
 
             // Hakkında
             Card(

@@ -10,6 +10,10 @@ import 'package:belediye_otomasyon/core/utils/modal_helpers.dart'
         showErrorInfoBar,
         showDeleteDialog;
 import 'package:belediye_otomasyon/core/services/api_service.dart';
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
+import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_action_buttons.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
 import 'package:belediye_otomasyon/core/utils/backend_datetime.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -99,20 +103,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
+    final horizontalPad = PageHeader.horizontalPadding(context);
 
-    return ScaffoldPage(
+    return AppScaffoldPage(
       content: Container(
         color: theme.scaffoldBackgroundColor,
+        padding: EdgeInsets.only(
+          left: horizontalPad,
+          right: horizontalPad,
+          top: AppUiTokens.space8,
+          bottom: AppUiTokens.space12,
+        ),
         child: Column(
           children: [
-            // Başlık AppShell içinde yönetiliyor
-            const SizedBox(height: 8),
             Expanded(
               child: Column(
           children: [
             // Filtre ve İstatistik Bölümü
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.only(bottom: 16),
               child: Column(
                 children: [
                   // Filtre
@@ -149,24 +158,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         ),
                       ),
                       const Spacer(),
-                      Tooltip(
-                        message: 'Rapor Ekle',
-                        child: FilledButton(
-                          child: Row(
-                            children: const [
-                              Icon(FluentIcons.add, size: 14),
-                              SizedBox(width: 6),
-                              Text('Rapor Ekle'),
-                            ],
-                          ),
-                          onPressed: () async {
-                            final created =
-                                await _showCreateReportModal(context);
-                            if (created == true) {
-                              await _loadReports();
-                            }
-                          },
-                        ),
+                      EntityAddButton(
+                        label: 'Rapor Ekle',
+                        tooltip: 'Rapor Ekle',
+                        onPressed: () async {
+                          final created = await _showCreateReportModal(context);
+                          if (created == true) {
+                            await _loadReports();
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -204,10 +204,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           theme,
                         ),
                       ),
-            ],
-          ),
+                    ],
+                  ),
                 ],
-        ),
+              ),
             ),
             
             // Rapor Listesi
@@ -248,7 +248,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               ),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              padding: EdgeInsets.zero,
                               itemCount: _filteredReports.length,
                               itemBuilder: (context, index) {
                                 final report = _filteredReports[index];
@@ -264,9 +264,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ],
         ),
-            ),
-          ],
-        ),
+      ),
+    ],
+  ),
       ),
     );
   }
@@ -843,33 +843,15 @@ class _ReportCard extends StatelessWidget {
               ),
                   ],
                   const Spacer(),
-                  Button(
-                    onPressed: onDetails,
-                    child: const Text('Detay'),
-                  ),
-                  const SizedBox(width: 8),
-                  Button(
-                    onPressed: onEdit,
-                    child: const Text('Düzenle'),
-                  ),
-                  const SizedBox(width: 8),
-                  if (report.status == ReportStatus.completed) ...[
-                    Button(
-                      onPressed: onOpen,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(FluentIcons.view, size: 16),
-                          const SizedBox(width: 4),
-                          const Text('Raporu Aç'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Button(
-                    onPressed: onDelete,
-                    child: Icon(FluentIcons.delete, size: 16),
+                  EntityActionButtons(
+                    width: report.status == ReportStatus.completed ? 280 : 170,
+                    primaryLabel:
+                        report.status == ReportStatus.completed ? 'Raporu Aç' : null,
+                    onPrimary:
+                        report.status == ReportStatus.completed ? onOpen : null,
+                    onEdit: onEdit,
+                    onDelete: onDelete,
+                    onDetail: onDetails,
                   ),
                 ],
               ),

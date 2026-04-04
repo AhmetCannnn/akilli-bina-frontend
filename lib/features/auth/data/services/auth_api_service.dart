@@ -75,5 +75,20 @@ class AuthApiService {
     );
     return Map<String, dynamic>.from(response.data);
   }
+
+  /// Davet linki ile hesap tamamlama
+  Future<Map<String, dynamic>> completeInvite({
+    required String token,
+    required String password,
+  }) async {
+    final response = await _apiService.post(
+      '/users/complete-invite',
+      data: {
+        'token': token,
+        'password': password,
+      },
+    );
+    return Map<String, dynamic>.from(response.data);
+  }
 }
 

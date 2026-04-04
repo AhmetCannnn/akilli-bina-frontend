@@ -1,8 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:belediye_otomasyon/features/buildings/data/services/visitor_api_service.dart';
 import 'package:belediye_otomasyon/core/utils/modal_helpers.dart' show buildErrorCard;
-import '../../utils/building_helpers.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_action_buttons.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
 import '../modals/visitor_modals.dart';
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
 
 class VisitorsTab extends StatefulWidget {
   const VisitorsTab({required this.building, super.key});
@@ -21,40 +23,40 @@ class _VisitorsTabState extends State<VisitorsTab> {
     final theme = FluentTheme.of(context);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: AppUiTokens.space16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Ziyaretçiler',
-                style: theme.typography.title?.copyWith(fontWeight: FontWeight.bold),
-              ),
+              const SizedBox.shrink(),
               Row(
                 children: [
                   const Icon(FluentIcons.calendar, size: 16),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppUiTokens.space6),
                   DatePicker(
                     selected: _selectedDay,
                     onChanged: (d) {
-                      if (d != null) setState(() => _selectedDay = d);
+                      setState(() => _selectedDay = d);
                     },
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppUiTokens.space16),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppUiTokens.space12,
+                      vertical: AppUiTokens.space6,
+                    ),
                     decoration: BoxDecoration(
                       color: theme.accentColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppUiTokens.radius16),
                       border: Border.all(color: theme.accentColor.withOpacity(0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(FluentIcons.people, color: theme.accentColor, size: 16),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppUiTokens.space6),
                         FutureBuilder<Map<String, dynamic>>(
                           future: VisitorApiService().getDailyVisitorSummary(widget.building['id'], _selectedDay),
                           builder: (context, snapshot) {
@@ -71,16 +73,9 @@ class _VisitorsTabState extends State<VisitorsTab> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Button(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(FluentIcons.add, size: 16),
-                        const SizedBox(width: 4),
-                        Text('Ekle'),
-                      ],
-                    ),
+                  const SizedBox(width: AppUiTokens.space8),
+                  EntityAddButton(
+                    label: 'Ekle',
                     onPressed: () => showAddVisitorModal(
                       context: context,
                       theme: theme,
@@ -93,7 +88,7 @@ class _VisitorsTabState extends State<VisitorsTab> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppUiTokens.space12),
           FutureBuilder<List<Map<String, dynamic>>>(
             future: VisitorApiService().getVisitorsByBuilding(widget.building['id'], visitDate: _selectedDay),
             builder: (context, visitorSnapshot) {
@@ -110,11 +105,11 @@ class _VisitorsTabState extends State<VisitorsTab> {
               if (visitors.isEmpty) {
                 return Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(AppUiTokens.space24),
                     child: Column(
                       children: [
                         Icon(FluentIcons.group, size: 48, color: theme.iconTheme.color?.withOpacity(0.5)),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppUiTokens.space12),
                         Text(
                           'Bu tarihte ziyaretçi kaydı bulunmuyor',
                           style: theme.typography.body?.copyWith(
@@ -150,8 +145,6 @@ class _VisitorsTabState extends State<VisitorsTab> {
     final entryTime = visitor['entry_time'] as String? ?? '';
     final exitTime = visitor['exit_time'] as String? ?? '';
     final isActive = exitTime.isEmpty;
-    final visitDurationRaw = visitor['visit_duration'];
-    final visitDuration = visitDurationRaw != null ? formatDuration(visitDurationRaw) : '';
 
     return Container(
       decoration: BoxDecoration(
@@ -160,10 +153,10 @@ class _VisitorsTabState extends State<VisitorsTab> {
       ),
       child: ListTile(
         leading: Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(AppUiTokens.space8),
           decoration: BoxDecoration(
             color: isActive ? Colors.green.withOpacity(0.1) : Colors.blue.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(AppUiTokens.radius6),
           ),
           child: Icon(
             isActive ? FluentIcons.people : FluentIcons.check_mark,
@@ -175,13 +168,36 @@ class _VisitorsTabState extends State<VisitorsTab> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Tooltip(
-              message: 'Düzenle',
-              child: IconButton(
-                icon: Icon(FluentIcons.edit, size: 18),
-                onPressed: () {
+            EntityActionButtons(
+              width: 160,
+              onEdit: () {
+                final visitDate = visitor['visit_date'] != null
+                    ? DateTime.tryParse(visitor['visit_date'].toString()) ??
+                        _selectedDay
+                    : _selectedDay;
+                showAddVisitorModal(
+                  context: context,
+                  theme: theme,
+                  buildingId: widget.building['id'] as int,
+                  selectedDay: visitDate,
+                  onSuccess: () => setState(() {}),
+                  visitor: visitor,
+                );
+              },
+              onDelete: () => showDeleteVisitorDialog(
+                context: context,
+                theme: theme,
+                visitor: visitor,
+                onSuccess: () => setState(() {}),
+              ),
+              onDetail: () => showVisitorDetail(
+                context: context,
+                theme: theme,
+                visitor: visitor,
+                onEdit: () {
                   final visitDate = visitor['visit_date'] != null
-                      ? DateTime.tryParse(visitor['visit_date'].toString()) ?? _selectedDay
+                      ? DateTime.tryParse(visitor['visit_date'].toString()) ??
+                          _selectedDay
                       : _selectedDay;
                   showAddVisitorModal(
                     context: context,
@@ -194,20 +210,8 @@ class _VisitorsTabState extends State<VisitorsTab> {
                 },
               ),
             ),
-            Tooltip(
-              message: 'Sil',
-              child: IconButton(
-                icon: Icon(FluentIcons.delete, size: 18, color: Colors.red),
-                onPressed: () => showDeleteVisitorDialog(
-                  context: context,
-                  theme: theme,
-                  visitor: visitor,
-                  onSuccess: () => setState(() {}),
-                ),
-              ),
-            ),
             if (isActive) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: AppUiTokens.space8),
               Button(
                 style: ButtonStyle(
                   backgroundColor: ButtonState.all(Colors.red),
@@ -217,7 +221,7 @@ class _VisitorsTabState extends State<VisitorsTab> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(FluentIcons.sign_out, size: 14),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: AppUiTokens.space4),
                     Text('Çıkış'),
                   ],
                 ),
@@ -229,12 +233,15 @@ class _VisitorsTabState extends State<VisitorsTab> {
                 ),
               ),
             ],
-            const SizedBox(width: 12),
+            const SizedBox(width: AppUiTokens.space12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppUiTokens.space10,
+                vertical: AppUiTokens.space6,
+              ),
               decoration: BoxDecoration(
                 color: theme.accentColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(AppUiTokens.radius8),
                 border: Border.all(
                   color: theme.accentColor.withOpacity(0.3),
                   width: 1,
@@ -252,7 +259,7 @@ class _VisitorsTabState extends State<VisitorsTab> {
                         size: 16,
                         color: theme.accentColor,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppUiTokens.space6),
                       Text(
                         entryTime,
                         style: theme.typography.body?.copyWith(
@@ -264,7 +271,7 @@ class _VisitorsTabState extends State<VisitorsTab> {
                     ],
                   ),
                   if (exitTime.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppUiTokens.space4),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -273,7 +280,7 @@ class _VisitorsTabState extends State<VisitorsTab> {
                           size: 16,
                           color: Colors.orange,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppUiTokens.space6),
                         Text(
                           exitTime,
                           style: theme.typography.body?.copyWith(
@@ -296,7 +303,8 @@ class _VisitorsTabState extends State<VisitorsTab> {
           visitor: visitor,
           onEdit: () {
             final visitDate = visitor['visit_date'] != null
-                ? DateTime.tryParse(visitor['visit_date'].toString()) ?? _selectedDay
+                ? DateTime.tryParse(visitor['visit_date'].toString()) ??
+                    _selectedDay
                 : _selectedDay;
             showAddVisitorModal(
               context: context,

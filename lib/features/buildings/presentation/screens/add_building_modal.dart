@@ -557,57 +557,62 @@ class AddBuildingModalState extends State<AddBuildingModal> {
                           ),
                         ),
                 _fieldSpacing,
-                // Bina Yöneticisi seçimi (sadece düzenleme modunda ve buildingId varsa)
-                if (widget.buildingData != null && widget.buildingData!['id'] != null)
-                  FutureBuilder<List<Map<String, dynamic>>>(
-                    future: EmployeeApiService().getEmployeesByBuildingId(widget.buildingData!['id'] as int),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const SizedBox.shrink();
-                      }
-                      
-                      if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
-                        return InfoLabel(
-                          label: 'Bina Yöneticisi',
-                          child: Text('Çalışan bulunamadı veya yüklenemedi'),
-                        );
-                      }
-                      
-                      final employees = snapshot.data!;
-                      final employeeItems = [
-                        null, // "Seçiniz" seçeneği
-                        ...employees,
-                      ];
-                      
+                // Bina Yöneticisi seçimi:
+                // Yeni bina oluştururken de seçilebilsin diye tüm aktif çalışanlardan listelenir.
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: EmployeeApiService().getEmployees(isActive: true),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return InfoLabel(
                         label: 'Bina Yöneticisi',
-                        child: ComboBox<Map<String, dynamic>?>(
-                          value: _selectedManagerId != null
-                              ? employees.firstWhere(
-                                  (e) => e['id']?.toString() == _selectedManagerId,
-                                  orElse: () => employees.first,
-                                )
-                              : null,
-                          items: employeeItems.map((employee) {
+                        child: ProgressRing(),
+                      );
+                    }
+
+                    if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
+                      return InfoLabel(
+                        label: 'Bina Yöneticisi',
+                        child: Text('Aktif çalışan bulunamadı veya yüklenemedi'),
+                      );
+                    }
+
+                    final employees = snapshot.data!;
+                    final selectedEmployee = _selectedManagerId == null
+                        ? null
+                        : employees.where((e) => e['id']?.toString() == _selectedManagerId).firstOrNull;
+
+                    return InfoLabel(
+                      label: 'Bina Yöneticisi',
+                      child: ComboBox<Map<String, dynamic>?>(
+                        value: selectedEmployee,
+                        items: [
+                          const ComboBoxItem<Map<String, dynamic>?>(
+                            value: null,
+                            child: Text('Seçiniz'),
+                          ),
+                          ...employees.map((employee) {
+                            final firstName = employee['first_name']?.toString() ?? '';
+                            final lastName = employee['last_name']?.toString() ?? '';
+                            final position = employee['position']?.toString() ?? '';
+                            final fullName = '$firstName $lastName'.trim();
+                            final label = position.isNotEmpty ? '$fullName ($position)' : fullName;
+
                             return ComboBoxItem<Map<String, dynamic>?>(
                               value: employee,
-                              child: Text(
-                                employee == null
-                                    ? 'Seçiniz'
-                                    : '${employee['first_name'] ?? ''} ${employee['last_name'] ?? ''} (${employee['position'] ?? ''})'.trim(),
-                              ),
+                              child: Text(label.isEmpty ? 'Adsız Çalışan' : label),
                             );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedManagerId = value?['id']?.toString();
-                            });
-                            getFormData();
-                          },
-                        ),
-                      );
-                    },
-                  ),
+                          }),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedManagerId = value?['id']?.toString();
+                          });
+                          getFormData();
+                        },
+                      ),
+                    );
+                  },
+                ),
                 _fieldSpacing,
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

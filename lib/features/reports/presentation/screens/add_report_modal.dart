@@ -8,10 +8,13 @@ import 'package:file_picker/file_picker.dart';
 import '../screens/reports_screen.dart' show Report, ReportCategory;
 
 class CreateReportModal extends StatefulWidget {
-  const CreateReportModal({super.key, this.initialReport});
+  const CreateReportModal({super.key, this.initialReport, this.initialBuildingId});
 
   /// Düzenleme modunda kullanılacak mevcut rapor (opsiyonel).
   final Report? initialReport;
+
+  /// Yeni rapor: bina detayından açıldığında combobox’ın ön seçimi.
+  final int? initialBuildingId;
 
   @override
   State<CreateReportModal> createState() => CreateReportModalState();
@@ -80,6 +83,8 @@ class CreateReportModalState extends State<CreateReportModal> {
       if (initial.fileUrl != null && initial.fileUrl!.isNotEmpty) {
         _selectedFileName = _getCleanFileNameFromUrl(initial.fileUrl!);
       }
+    } else if (widget.initialBuildingId != null) {
+      _selectedBuildingId = widget.initialBuildingId;
     }
   }
 

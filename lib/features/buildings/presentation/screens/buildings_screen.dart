@@ -4,6 +4,9 @@ import '../utils/building_helpers.dart';
 import 'add_building_modal.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/utils/api_error.dart';
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
+import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/building_provider.dart';
 
@@ -14,10 +17,17 @@ class BuildingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = FluentTheme.of(context);
     final buildingsAsync = ref.watch(buildingControllerProvider);
+    final horizontalPad = PageHeader.horizontalPadding(context);
 
-    return ScaffoldPage(
+    return AppScaffoldPage(
       content: Container(
         color: theme.scaffoldBackgroundColor,
+        padding: EdgeInsets.only(
+          left: horizontalPad,
+          right: horizontalPad,
+          top: AppUiTokens.space8,
+          bottom: AppUiTokens.space12,
+        ),
         child: buildingsAsync.when(
           data: (buildings) => _BuildingsTabs(buildings: buildings),
           loading: () => const Center(child: ProgressRing()),
@@ -81,15 +91,15 @@ class _BuildingList extends StatelessWidget {
           final isNarrow = constraints.maxWidth < 800;
           if (isNarrow) {
             return ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.zero,
               itemCount: buildings.length,
               itemBuilder: (context, index) => _BuildingCard(building: buildings[index]),
             );
           }
           final spacing = 12.0;
-          final itemWidth = (constraints.maxWidth - 16 * 2 - spacing) / 2;
+          final itemWidth = (constraints.maxWidth - spacing) / 2;
           return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.zero,
             child: Wrap(
               spacing: spacing,
               runSpacing: spacing,
@@ -264,21 +274,13 @@ class _BuildingsTabsState extends ConsumerState<_BuildingsTabs> {
                 ),
               ),
               Positioned(
-                right: 30,
-                child: Tooltip(
-                  message: 'Yeni Bina',
-                  child: FilledButton(
-                    child: Row(
-                      children: const [
-                        Icon(FluentIcons.add, size: 14),
-                        SizedBox(width: 6),
-                        Text('Yeni Bina'),
-                      ],
-                    ),
-                    onPressed: () {
-                      AddBuildingModal.showAddBuildingModal(context, ref);
-                    },
-                  ),
+                right: 0,
+                child: EntityAddButton(
+                  label: 'Yeni Bina',
+                  tooltip: 'Yeni Bina',
+                  onPressed: () {
+                    AddBuildingModal.showAddBuildingModal(context, ref);
+                  },
                 ),
               ),
             ],
@@ -286,10 +288,7 @@ class _BuildingsTabsState extends ConsumerState<_BuildingsTabs> {
         ),
         // İçerik: tam genişlik
         Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            child: _BuildingList(buildings: filtered),
-          ),
+          child: _BuildingList(buildings: filtered),
         ),
       ],
     );

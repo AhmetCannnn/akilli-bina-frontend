@@ -14,6 +14,8 @@ import 'package:belediye_otomasyon/features/reports/presentation/screens/reports
 import '../widgets/ai_assistant_modal.dart';
 import 'package:belediye_otomasyon/theme/theme_provider.dart';
 import 'package:belediye_otomasyon/features/buildings/presentation/providers/building_provider.dart';
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
+import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
 import 'package:belediye_otomasyon/features/navigation/presentation/widgets/app_shell.dart';
 import 'package:belediye_otomasyon/features/settings/presentation/screens/settings_screen.dart';
 
@@ -97,7 +99,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final buildingsAsync = ref.watch(buildingControllerProvider);
 
     return buildingsAsync.when(
-      data: (buildings) => _buildHomeContent(theme, isDarkMode, buildings),
+      data: (buildings) =>
+          _buildHomeContent(context, theme, isDarkMode, buildings),
       loading: () => const Center(child: ProgressRing()),
       error: (error, stack) => Center(
         child: Column(
@@ -114,18 +117,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildHomeContent(FluentThemeData theme, bool isDarkMode, List<Map<String, dynamic>> buildings) {
-    return ScaffoldPage(
-      padding: EdgeInsets.zero,
+  Widget _buildHomeContent(
+    BuildContext context,
+    FluentThemeData theme,
+    bool isDarkMode,
+    List<Map<String, dynamic>> buildings,
+  ) {
+    final horizontalPad = PageHeader.horizontalPadding(context);
+    return AppScaffoldPage(
       content: Container(
         color: theme.scaffoldBackgroundColor,
+        padding: EdgeInsets.only(
+          left: horizontalPad,
+          right: horizontalPad,
+          top: AppUiTokens.space8,
+          bottom: AppUiTokens.space12,
+        ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: EdgeInsets.zero,
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Başlık AppShell içinde yönetiliyor
-            const SizedBox(height: 16),
             // Harita Bölümü (FlutterMap)
             Card(
               child: SizedBox(

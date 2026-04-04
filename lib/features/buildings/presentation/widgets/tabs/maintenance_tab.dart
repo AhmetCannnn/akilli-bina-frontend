@@ -5,6 +5,7 @@ import '../../utils/building_helpers.dart';
 import '../../providers/building_provider.dart';
 import 'package:belediye_otomasyon/core/widgets/removable_tag.dart' show RemovableTag;
 import 'package:belediye_otomasyon/core/utils/backend_datetime.dart';
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
 
 class MaintenanceTab extends ConsumerWidget {
   const MaintenanceTab({required this.building, super.key});
@@ -18,23 +19,16 @@ class MaintenanceTab extends ConsumerWidget {
     final maintenanceAsync = ref.watch(maintenanceByBuildingProvider(buildingId));
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: AppUiTokens.space16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Bakım Durumu',
-            style: theme.typography.title?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
           maintenanceAsync.when(
             data: (maintenanceList) => _MaintenanceList(maintenanceList: maintenanceList),
             loading: () => const Center(child: ProgressRing()),
             error: (error, stack) => Card(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(AppUiTokens.space24),
                 child: Column(
                   children: [
                     Icon(
@@ -42,7 +36,7 @@ class MaintenanceTab extends ConsumerWidget {
                       size: 48,
                       color: Colors.red,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppUiTokens.space12),
                     Text(
                       'Bakım verileri yüklenirken hata oluştu',
                       style: theme.typography.body?.copyWith(
@@ -50,7 +44,7 @@ class MaintenanceTab extends ConsumerWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppUiTokens.space4),
                     Text(
                       'Lütfen daha sonra tekrar deneyin',
                       style: theme.typography.caption?.copyWith(
@@ -80,7 +74,7 @@ class _MaintenanceList extends StatelessWidget {
     if (maintenanceList.isEmpty) {
       return Card(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(AppUiTokens.space24),
           child: Column(
             children: [
               Icon(
@@ -89,14 +83,14 @@ class _MaintenanceList extends StatelessWidget {
                 size: 48,
                 color: theme.iconTheme.color?.withOpacity(0.5),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppUiTokens.space12),
               Text(
                 'Henüz bakım kaydı bulunmuyor',
                 style: theme.typography.body?.copyWith(
                   color: theme.iconTheme.color?.withOpacity(0.7),
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppUiTokens.space4),
               Text(
                 'Bu binaya ait bakım kayıtları görüntülenecek',
                 style: theme.typography.caption?.copyWith(
@@ -111,11 +105,11 @@ class _MaintenanceList extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppUiTokens.space16),
         child: Column(
           children: [
             ...maintenanceList.map((maintenance) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(bottom: AppUiTokens.space16),
               child: _MaintenanceItem(
                 maintenance: maintenance,
               ),
@@ -209,12 +203,17 @@ class _MaintenanceItem extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => _openMaintenanceDetailModal(context, maintenance),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        padding: const EdgeInsets.fromLTRB(
+          AppUiTokens.space12,
+          AppUiTokens.space8,
+          AppUiTokens.space12,
+          AppUiTokens.space12,
+        ),
         decoration: BoxDecoration(
           border: Border.all(
             color: theme.iconTheme.color?.withOpacity(0.1) ?? Colors.grey.withOpacity(0.1),
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(AppUiTokens.radius8),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,7 +229,7 @@ class _MaintenanceItem extends StatelessWidget {
                         style: theme.typography.bodyStrong,
                       ),
                       if (description != null) ...[
-                        const SizedBox(height: 4),
+                        const SizedBox(height: AppUiTokens.space4),
                         Text(
                           description,
                           style: theme.typography.caption?.copyWith(
@@ -243,11 +242,11 @@ class _MaintenanceItem extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppUiTokens.space12),
                 RemovableTag(label: status.text, color: status.color),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppUiTokens.space8),
             Row(
               children: [
                 Icon(
@@ -255,7 +254,7 @@ class _MaintenanceItem extends StatelessWidget {
                   size: 14,
                   color: theme.iconTheme.color?.withOpacity(0.6),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppUiTokens.space4),
                 Text(
                   '${date.day}/${date.month}/${date.year}',
                   style: theme.typography.caption?.copyWith(
@@ -263,7 +262,7 @@ class _MaintenanceItem extends StatelessWidget {
                   ),
                 ),
                 if (cost != null) ...[
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppUiTokens.space16),
                   Text(
                     '₺${cost.toStringAsFixed(0)}',
                     style: theme.typography.caption?.copyWith(
@@ -328,7 +327,7 @@ void _openMaintenanceDetailModal(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(FluentIcons.build_definition, size: 18),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppUiTokens.space8),
                   Text(title, style: theme.typography.bodyStrong),
                 ],
               ),
@@ -346,13 +345,13 @@ void _openMaintenanceDetailModal(
         ),
       ),
       content: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        padding: const EdgeInsets.fromLTRB(AppUiTokens.space12, AppUiTokens.space4, AppUiTokens.space12, AppUiTokens.space12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppUiTokens.space8,
+              runSpacing: AppUiTokens.space8,
               children: [
                 RemovableTag(label: _statusText(status), color: _statusColor(status)),
                 if (priority.isNotEmpty)
@@ -383,36 +382,36 @@ void _openMaintenanceDetailModal(
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppUiTokens.space12),
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppUiTokens.space12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _detailRow(ctx, 'Başlık', title),
                     if (description.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(ctx, 'Açıklama', description),
                     ],
                     if (locationText.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(ctx, 'Bakım Yeri', locationText),
                     ],
                     if (maintenanceType.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(ctx, 'Bakım Türü', _maintenanceTypeText(maintenanceType)),
                     ],
                     if (scheduledDate != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(ctx, 'Planlanan Tarih', _formatDate(scheduledDate)),
                     ],
                     if (completedDate != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(ctx, 'Tamamlanma Tarihi', _formatDate(completedDate)),
                     ],
                     if (costRaw != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(
                         ctx,
                         'Maliyet',
@@ -420,19 +419,19 @@ void _openMaintenanceDetailModal(
                       ),
                     ],
                     if (notes.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(ctx, 'Notlar', notes),
                     ],
                     if (performedBy.isNotEmpty) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(ctx, 'Yapan (UUID)', performedBy),
                     ],
                     if (createdAt != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(ctx, 'Oluşturma', _formatDateTime(createdAt)),
                     ],
                     if (updatedAt != null) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppUiTokens.space8),
                       _detailRow(ctx, 'Güncelleme', _formatDateTime(updatedAt)),
                     ],
                   ],

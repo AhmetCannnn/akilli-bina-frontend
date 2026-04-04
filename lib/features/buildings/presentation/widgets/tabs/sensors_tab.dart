@@ -2,13 +2,14 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:belediye_otomasyon/features/buildings/data/services/energy_api_service.dart';
 import 'package:belediye_otomasyon/core/utils/modal_helpers.dart' show buildErrorCard;
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
 
 /// Akıllı Plaza teması: yumuşak maviler ve gri tonları
 const _kEnergyPrimary = Color(0xFF5B8DEE);
 const _kEnergyPrimaryLight = Color(0xFFE8F0FE);
 const _kEnergyGray = Color(0xFF6B7280);
 const _kEnergyGrayLight = Color(0xFFF3F4F6);
-const _kEnergyCardRadius = 20.0;
+const _kEnergyCardRadius = AppUiTokens.radius20;
 const _kEnergyCardShadow = 0.06;
 
 class _ChartPoint {
@@ -139,7 +140,7 @@ class _SensorsTabState extends State<SensorsTab> {
     final futureData = _buildFutureData();
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: AppUiTokens.space16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -155,7 +156,7 @@ class _SensorsTabState extends State<SensorsTab> {
                   bgColor: _kEnergyPrimaryLight,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppUiTokens.space12),
               Expanded(
                 child: _StatCard(
                   title: 'Tahmin (Şimdi)',
@@ -165,7 +166,7 @@ class _SensorsTabState extends State<SensorsTab> {
                   bgColor: _kEnergyPrimaryLight,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppUiTokens.space12),
               Expanded(
                 child: _StatCard(
                   title: 'Sonraki 4 Saat Ort.',
@@ -177,7 +178,7 @@ class _SensorsTabState extends State<SensorsTab> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppUiTokens.space20),
           // Past vs Future grafiği (Syncfusion)
           Text(
             'Geçmiş vs Gelecek',
@@ -186,7 +187,7 @@ class _SensorsTabState extends State<SensorsTab> {
               color: gray,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppUiTokens.space8),
           Container(
             decoration: BoxDecoration(
               color: _kEnergyGrayLight.withOpacity(0.5),
@@ -199,7 +200,7 @@ class _SensorsTabState extends State<SensorsTab> {
                 ),
               ],
             ),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppUiTokens.space16),
             child: SizedBox(
               height: 220,
               child: SfCartesianChart(
@@ -246,7 +247,7 @@ class _SensorsTabState extends State<SensorsTab> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppUiTokens.space20),
           // Yatay kaydırılabilir 4 ProjectionCard
           Text(
             'Saatlik Tahminler',
@@ -255,13 +256,13 @@ class _SensorsTabState extends State<SensorsTab> {
               color: gray,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppUiTokens.space8),
           SizedBox(
             height: 120,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: 4,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: AppUiTokens.space12),
               itemBuilder: (context, index) {
                 if (_futurePredictions != null && index < _futurePredictions!.length) {
                   final r = _futurePredictions![index];
@@ -307,7 +308,7 @@ class _StatCard extends StatelessWidget {
     final gray = _kEnergyGray;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppUiTokens.space16),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(_kEnergyCardRadius),
@@ -326,14 +327,14 @@ class _StatCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(AppUiTokens.space8),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(AppUiTokens.radius10),
                 ),
                 child: Icon(icon, color: color, size: 20),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppUiTokens.space10),
               Expanded(
                 child: Text(
                   title,
@@ -347,7 +348,7 @@ class _StatCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppUiTokens.space12),
           Text(
             value,
             style: theme.typography.title?.copyWith(
@@ -379,7 +380,7 @@ class _ProjectionCard extends StatelessWidget {
 
     return Container(
       width: 140,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppUiTokens.space14),
       decoration: BoxDecoration(
         color: _kEnergyGrayLight.withOpacity(0.6),
         borderRadius: BorderRadius.circular(_kEnergyCardRadius),
@@ -399,12 +400,12 @@ class _ProjectionCard extends StatelessWidget {
             label,
             style: theme.typography.bodyStrong?.copyWith(color: _kEnergyPrimary),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppUiTokens.space4),
           Text(
             dateLabel,
             style: theme.typography.caption?.copyWith(color: gray, fontSize: 11),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppUiTokens.space8),
           Text(
             '${value.toStringAsFixed(1)} kWh',
             style: theme.typography.title?.copyWith(

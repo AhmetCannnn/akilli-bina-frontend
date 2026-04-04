@@ -42,6 +42,15 @@ class EmployeeApiService {
     }
   }
 
+  Future<Map<String, dynamic>?> getEmployeeById(String employeeId) async {
+    try {
+      final response = await _apiService.get('/employees/$employeeId');
+      return Map<String, dynamic>.from(response.data);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>?> createEmployee(
     Map<String, dynamic> employeeData,
   ) async {
@@ -63,6 +72,11 @@ class EmployeeApiService {
   Future<bool> deleteEmployee(String employeeId) async {
     await _apiService.delete('/employees/$employeeId');
     return true;
+  }
+
+  Future<Map<String, dynamic>> createInvite(String employeeId) async {
+    final response = await _apiService.post('/employees/$employeeId/invite');
+    return Map<String, dynamic>.from(response.data);
   }
 }
 

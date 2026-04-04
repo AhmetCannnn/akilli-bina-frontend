@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../utils/building_helpers.dart';
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
 
 class DepartmentsTab extends StatelessWidget {
   const DepartmentsTab({required this.building, super.key});
@@ -11,17 +12,10 @@ class DepartmentsTab extends StatelessWidget {
     final theme = FluentTheme.of(context);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: AppUiTokens.space16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Birimler ve Tesisler',
-            style: theme.typography.title?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
           _DepartmentsCard(building: building),
         ],
       ),
@@ -40,7 +34,7 @@ class _DepartmentsCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(AppUiTokens.space16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -48,19 +42,19 @@ class _DepartmentsCard extends StatelessWidget {
               'Birimler',
               style: theme.typography.bodyStrong,
             ),
-            const SizedBox(height: 12),
+          const SizedBox(height: AppUiTokens.space12),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppUiTokens.space8,
+              runSpacing: AppUiTokens.space8,
               children: safeStringList(building['departments']).map((department) {
                 return Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: AppUiTokens.space12,
+                    vertical: AppUiTokens.space6,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(AppUiTokens.radius4),
                   ),
                   child: Text(
                     department,
@@ -72,24 +66,24 @@ class _DepartmentsCard extends StatelessWidget {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppUiTokens.space24),
             Text(
               'Tesisler',
               style: theme.typography.bodyStrong,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppUiTokens.space12),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppUiTokens.space8,
+              runSpacing: AppUiTokens.space8,
               children: safeStringList(building['facilities']).map((facility) {
                 return Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+                    horizontal: AppUiTokens.space12,
+                    vertical: AppUiTokens.space6,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(AppUiTokens.radius4),
                   ),
                   child: Text(
                     facility,

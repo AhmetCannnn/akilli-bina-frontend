@@ -11,7 +11,8 @@ import '../../utils/form_validators.dart' show validateEmployeeForm;
 void showAddEmployeeModal({
   required BuildContext context,
   required FluentThemeData theme,
-  required int buildingId,
+  int? buildingId,
+  List<Map<String, dynamic>>? buildings,
   required Function(Map<String, dynamic>) onSuccess,
 }) {
   final formKey = GlobalKey<FormState>();
@@ -21,6 +22,7 @@ void showAddEmployeeModal({
   final phoneController = TextEditingController();
   final positionController = TextEditingController();
   final hireDateController = TextEditingController();
+  int? selectedBuildingId = buildingId;
 
   showDialog<bool>(
     context: context,
@@ -41,6 +43,31 @@ void showAddEmployeeModal({
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (buildings != null) ...[
+                          InfoLabel(
+                            label: 'Bina *',
+                            child: ComboBox<int>(
+                              value: selectedBuildingId,
+                              isExpanded: true,
+                              placeholder: const Text('Bina seçin'),
+                              items: [
+                                for (final b in buildings)
+                                  ComboBoxItem<int>(
+                                    value: b['id'] as int,
+                                    child: Text(
+                                      (b['name'] ?? 'İsimsiz Bina').toString(),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                              ],
+                              onChanged: (v) => setState(() {
+                                selectedBuildingId = v;
+                              }),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
                         // Ad Soyad
                         buildFormRow([
                           Expanded(
@@ -109,6 +136,16 @@ void showAddEmployeeModal({
                   FilledButton(
                     child: Text('Ekle'),
                     onPressed: () async {
+                      if (selectedBuildingId == null) {
+                        showErrorDialog(
+                          context,
+                          theme,
+                          'Eksik Bilgi',
+                          'Lütfen bir bina seçin.',
+                        );
+                        return;
+                      }
+
                       // Validasyon kontrolü
                       final hasError = validateEmployeeForm(
                         firstName: firstNameController.text,
@@ -133,7 +170,7 @@ void showAddEmployeeModal({
                       }
 
                       final employeeData = {
-                        'building_id': buildingId,
+                        'building_id': selectedBuildingId,
                         'first_name': firstNameController.text.trim(),
                         'last_name': lastNameController.text.trim(),
                         'email': emailController.text.trim(),

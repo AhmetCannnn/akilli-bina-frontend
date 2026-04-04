@@ -6,11 +6,15 @@ import 'package:belediye_otomasyon/features/employees/data/services/employee_api
 import 'package:belediye_otomasyon/core/utils/modal_helpers.dart' show buildModalTitle, buildModalConstraints, showSuccessInfoBar, buildErrorCard, showDeleteDialog;
 import 'package:belediye_otomasyon/core/utils/form_field_helpers.dart' show buildFormTextField, buildFormComboBox;
 import 'package:belediye_otomasyon/core/utils/api_error.dart' show humanizeError;
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
+import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_action_buttons.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
 import '../../domain/models/issue.dart';
 import 'report_issue_modal.dart';
 import 'package:belediye_otomasyon/core/widgets/removable_tag.dart' show RemovableTag;
 
-void _openInterventionDetailModal(BuildContext context, Issue issue) {
+void openInterventionDetailModal(BuildContext context, Issue issue) {
   final theme = FluentTheme.of(context);
   showDialog(
     context: context,
@@ -92,12 +96,18 @@ class _ActiveIssuesScreenState extends ConsumerState<ActiveIssuesScreen> {
       }
     });
 
-    return ScaffoldPage(
+    final horizontalPad = PageHeader.horizontalPadding(context);
+    return AppScaffoldPage(
       content: Container(
         color: theme.scaffoldBackgroundColor,
+        padding: EdgeInsets.only(
+          left: horizontalPad,
+          right: horizontalPad,
+          top: AppUiTokens.space8,
+          bottom: AppUiTokens.space12,
+        ),
         child: Column(
           children: [
-            const SizedBox(height: 8),
             Expanded(
               child: issuesAsync.when(
                 loading: () => const Center(child: ProgressRing()),
@@ -112,7 +122,7 @@ class _ActiveIssuesScreenState extends ConsumerState<ActiveIssuesScreen> {
                   return Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.only(bottom: 16),
               child: Row(
                 children: [
                   Icon(
@@ -134,28 +144,20 @@ class _ActiveIssuesScreenState extends ConsumerState<ActiveIssuesScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Tooltip(
-                    message: 'Arıza Bildirimi Ekle',
-                    child: FilledButton(
-                      child: Row(
-                        children: const [
-                          Icon(FluentIcons.add, size: 14),
-                          SizedBox(width: 6),
-                          Text('Arıza Bildirimi Ekle'),
-                        ],
-                      ),
-                      onPressed: () {
-                        showReportIssueModal(context, ref);
-                                  ref.read(issueControllerProvider.notifier).refreshIssues();
-                      },
-                    ),
+                  EntityAddButton(
+                    label: 'Arıza Bildirimi Ekle',
+                    tooltip: 'Arıza Bildirimi Ekle',
+                    onPressed: () {
+                      showReportIssueModal(context, ref);
+                      ref.read(issueControllerProvider.notifier).refreshIssues();
+                    },
                   ),
                 ],
               ),
             ),
             
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.only(bottom: 16),
               child: Row(
                 children: [
                   Expanded(
@@ -222,14 +224,41 @@ class _ActiveIssuesScreenState extends ConsumerState<ActiveIssuesScreen> {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.zero,
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final issue = filtered[index];
-                        return _IssueCard(
+                        return IssueCard(
                           issue: issue,
-                          onEdit: () => _openIssueEditUsingReportModal(context, ref, issue),
-                          onAddIntervention: () => _openInterventionModal(context, ref, issue, isEdit: true),
+                          onEdit: () => openIssueEditUsingReportModal(context, ref, issue),
+                          onAddIntervention: () => openInterventionModal(context, ref, issue, isEdit: true),
+                          onDeleteIntervention: () {
+                            final theme = FluentTheme.of(context);
+                            showDeleteDialog(
+                              context: context,
+                              theme: theme,
+                              title: 'Müdahaleyi Sil',
+                              message: '"${issue.title}" için müdahale bilgilerini silmek istediğinize emin misiniz?',
+                              onDelete: () async {
+                                await ref.read(issueControllerProvider.notifier).updateIssue(
+                                  issue.id,
+                                  {
+                                    'status': IssueStatus.pending.apiValue,
+                                    'assigned_to': null,
+                                    'intervention_assignee': null,
+                                    'intervention_note': null,
+                                    'intervention_at': null,
+                                    'estimated_cost': null,
+                                    'actual_cost': null,
+                                    'resolved_at': null,
+                                  },
+                                );
+                                return true;
+                              },
+                              successMessage: 'Müdahale bilgileri silindi.',
+                              onSuccess: null,
+                            );
+                          },
                           onDelete: () {
                             final theme = FluentTheme.of(context);
                             showDeleteDialog(
@@ -304,7 +333,7 @@ class _ActiveIssuesScreenState extends ConsumerState<ActiveIssuesScreen> {
 }
 
 
-void _openIssueEditUsingReportModal(BuildContext context, WidgetRef ref, Issue issue) {
+void openIssueEditUsingReportModal(BuildContext context, WidgetRef ref, Issue issue) {
   final formKey = GlobalKey<FormState>();
   final modalKey = GlobalKey<ReportIssueModalState>();
 
@@ -394,7 +423,7 @@ double? _parseCost(String s) {
   return double.tryParse(t);
 }
 
-void _openInterventionModal(BuildContext context, WidgetRef ref, Issue issue, {bool isEdit = false}) {
+void openInterventionModal(BuildContext context, WidgetRef ref, Issue issue, {bool isEdit = false}) {
   final theme = FluentTheme.of(context);
   final TextEditingController note = TextEditingController(text: isEdit ? (issue.interventionNote ?? '') : '');
   String? selectedEmployeeId = issue.assignedTo; // UUID string if present
@@ -650,7 +679,7 @@ String _formatCurrency(double value) {
   }
 }
 
-void _showIssueDetailModal(BuildContext context, Issue issue) {
+void showIssueDetailModal(BuildContext context, Issue issue) {
   final theme = FluentTheme.of(context);
   showDialog(
     context: context,
@@ -769,23 +798,25 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _IssueCard extends StatelessWidget {
-  const _IssueCard({
+class IssueCard extends StatelessWidget {
+  const IssueCard({
+    super.key,
     required this.issue,
     required this.onEdit,
     required this.onAddIntervention,
+    required this.onDeleteIntervention,
     required this.onDelete,
   });
 
   final Issue issue;
   final VoidCallback onEdit;
   final VoidCallback onAddIntervention;
+  final VoidCallback onDeleteIntervention;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final bool isLight = theme.brightness == Brightness.light;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -875,18 +906,10 @@ class _IssueCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        const SizedBox.shrink(),
-                        const SizedBox(width: 0),
-                        const SizedBox(width: 12),
-                        Button(onPressed: () => _showIssueDetailModal(context, issue), child: const Text('Detay')),
-                        const SizedBox(width: 8),
-                        Button(onPressed: onEdit, child: const Text('Düzenle')),
-                        const SizedBox(width: 8),
-                        Button(onPressed: onDelete, child: const Text('Sil')),
-                      ],
+                    EntityActionButtons(
+                      onEdit: onEdit,
+                      onDelete: onDelete,
+                      onDetail: () => showIssueDetailModal(context, issue),
                     ),
                   ],
                 ),
@@ -931,11 +954,11 @@ class _IssueCard extends StatelessWidget {
                               if ((issue.interventionNote ?? '').isNotEmpty)
                                 Text(issue.interventionNote!, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.typography.body),
                               const SizedBox(height: 8),
-                              Row(children: [
-                                Button(onPressed: () => _openInterventionDetailModal(context, issue), child: const Text('Detay')),
-                                const SizedBox(width: 8),
-                                Button(onPressed: onAddIntervention, child: const Text('Düzenle')),
-                              ]),
+                              EntityActionButtons(
+                                onEdit: onAddIntervention,
+                                onDelete: onDeleteIntervention,
+                                onDetail: () => openInterventionDetailModal(context, issue),
+                              ),
                             ],
                           ),
                         ),
@@ -977,7 +1000,12 @@ String _formatDate(DateTime date) {
   return 'Şimdi';
 }
 
-void showReportIssueModal(BuildContext context, WidgetRef ref) {
+void showReportIssueModal(
+  BuildContext context,
+  WidgetRef ref, {
+  String? initialBuildingId,
+  String? initialBuildingName,
+}) {
   final formKey = GlobalKey<FormState>();
   final modalKey = GlobalKey<ReportIssueModalState>();
 
@@ -995,6 +1023,8 @@ void showReportIssueModal(BuildContext context, WidgetRef ref) {
               child: ReportIssueModal(
                 key: modalKey,
                 formKey: formKey,
+                initialBuildingId: initialBuildingId,
+                initialBuildingName: initialBuildingName,
               ),
             ),
           ),

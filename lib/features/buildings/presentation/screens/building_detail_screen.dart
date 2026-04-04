@@ -13,6 +13,9 @@ import '../../data/services/energy_api_service.dart';
 import '../../data/services/visitor_api_service.dart';
 import '../utils/building_helpers.dart';
 import 'package:belediye_otomasyon/core/utils/modal_helpers.dart' show showErrorDialog, showDeleteDialog, buildModalConstraints, buildModalTitle, showSuccessInfoBar, showErrorInfoBar;
+import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
+import 'package:belediye_otomasyon/core/widgets/app_entity_row_actions.dart';
+import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
 import 'package:belediye_otomasyon/core/widgets/removable_tag.dart';
 import '../widgets/tabs/departments_tab.dart';
 import '../widgets/tabs/employees_tab.dart';
@@ -20,6 +23,8 @@ import '../widgets/tabs/info_tab.dart';
 import '../widgets/tabs/maintenance_tab.dart';
 import '../widgets/tabs/sensors_tab.dart';
 import '../widgets/tabs/visitors_tab.dart';
+import '../widgets/tabs/building_reports_tab.dart';
+import '../widgets/tabs/building_issues_tab.dart';
 import '../widgets/sensor_card.dart';
 
 class BuildingDetailScreen extends ConsumerWidget {
@@ -34,7 +39,23 @@ class BuildingDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = FluentTheme.of(context);
+    final horizontalPad = PageHeader.horizontalPadding(context);
     final buildingAsync = ref.watch(buildingDetailControllerProvider(buildingId));
+
+    Widget withPageChrome(Widget child) {
+      return AppScaffoldPage(
+        content: Container(
+          color: theme.scaffoldBackgroundColor,
+          padding: EdgeInsets.only(
+            left: horizontalPad,
+            right: horizontalPad,
+            top: AppUiTokens.space8,
+            bottom: AppUiTokens.space12,
+          ),
+          child: child,
+        ),
+      );
+    }
 
     return buildingAsync.when(
       data: (building) {
@@ -44,67 +65,81 @@ class BuildingDetailScreen extends ConsumerWidget {
             future: EmployeeApiService().getEmployeesByBuildingId(buildingId),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: ProgressRing());
+                return withPageChrome(const Center(child: ProgressRing()));
               }
-              
+
               if (snapshot.hasError) {
                 // Hata durumunda employees olmadan devam et
-                return _buildBuildingContent(theme, building, [], context, ref);
+                return withPageChrome(
+                  _buildBuildingContent(theme, building, [], context, ref),
+                );
               }
-              
+
               final employees = snapshot.data ?? [];
-              
+
               // Building verisine employees ekle
               final updatedBuilding = Map<String, dynamic>.from(building);
               updatedBuilding['employees'] = employees;
-              
-              return _buildBuildingContent(theme, updatedBuilding, employees, context, ref);
+
+              return withPageChrome(
+                _buildBuildingContent(theme, updatedBuilding, employees, context, ref),
+              );
             },
           );
         }
-        
-        return _buildBuildingContent(theme, building, building['employees'] as List<Map<String, dynamic>>, context, ref);
+
+        return withPageChrome(
+          _buildBuildingContent(
+            theme,
+            building,
+            building['employees'] as List<Map<String, dynamic>>,
+            context,
+            ref,
+          ),
+        );
       },
-      loading: () => const Center(child: ProgressRing()),
-      error: (error, stack) => Center(
-              child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-            Text(humanizeError(error)),
-            Button(
-              child: const Text('Yeniden Dene'),
-              onPressed: () => ref.refresh(buildingDetailControllerProvider(buildingId)),
-                          ),
-                        ],
-                      ),
+      loading: () => withPageChrome(const Center(child: ProgressRing())),
+      error: (error, stack) => withPageChrome(
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(humanizeError(error)),
+              Button(
+                child: const Text('Yeniden Dene'),
+                onPressed: () =>
+                    ref.refresh(buildingDetailControllerProvider(buildingId)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
-  
-  Widget _buildBuildingContent(FluentThemeData theme, Map<String, dynamic> building, List<Map<String, dynamic>> employees, BuildContext context, WidgetRef ref) {
-    return Container(
-        color: theme.scaffoldBackgroundColor,
-        child: Column(
-          children: [
-          // Üstte yalnızca bina bilgi kartı
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-            child: _BuildingHeader(
-              building: building,
-              employees: employees,
-              ref: ref,
-              onEdit: () => AddBuildingModal.showEditBuildingModal(context, ref, buildingId, building),
-            ),
-          ),
-            const SizedBox(height: 8),
-          _LiveSensorsSection(building: building),
-          const SizedBox(height: 12),
-                  Expanded(
-              child: _BuildingDetailTabs(building: building),
-          ),
-        ],
-      ),
+
+  Widget _buildBuildingContent(
+    FluentThemeData theme,
+    Map<String, dynamic> building,
+    List<Map<String, dynamic>> employees,
+    BuildContext context,
+    WidgetRef ref,
+  ) {
+    return Column(
+      children: [
+        _BuildingHeader(
+          building: building,
+          employees: employees,
+          ref: ref,
+          onEdit: () =>
+              AddBuildingModal.showEditBuildingModal(context, ref, buildingId, building),
+        ),
+        const SizedBox(height: AppUiTokens.space8),
+        _LiveSensorsSection(building: building),
+        const SizedBox(height: AppUiTokens.space12),
+        Expanded(
+          child: _BuildingDetailTabs(building: building),
+        ),
+      ],
     );
   }
 }
@@ -209,21 +244,13 @@ class _LiveSensorsSectionState extends State<_LiveSensorsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
     final timeAgo = _getTimeAgo();
     final airQualityText = _getAirQualityText(_aqi);
     final airQualityColor = _getAirQualityColor(_aqi);
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
+
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Anlık Sensör Verileri',
-            style: theme.typography.title?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
               final isXxl = constraints.maxWidth >= 1500;
@@ -283,7 +310,6 @@ class _LiveSensorsSectionState extends State<_LiveSensorsSection> {
             },
           ),
         ],
-      ),
     );
   }
 }
@@ -300,11 +326,28 @@ class _BuildingDetailTabs extends StatefulWidget {
 class _BuildingDetailTabsState extends State<_BuildingDetailTabs> {
   int _currentIndex = 0;
 
+  Text _tabLabel(
+    BuildContext context,
+    String label,
+    int tabIndex,
+  ) {
+    final theme = FluentTheme.of(context);
+    final isActive = _currentIndex == tabIndex;
+    return Text(
+      label,
+      style: theme.typography.body?.copyWith(
+        fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+        color: isActive
+            ? theme.accentColor
+            : theme.typography.body?.color?.withOpacity(0.78),
+        letterSpacing: 0.2,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
+    return Column(
         children: [
           Expanded(
             child: TabView(
@@ -313,39 +356,48 @@ class _BuildingDetailTabsState extends State<_BuildingDetailTabs> {
               tabs: [
                 Tab(
                   icon: const Icon(FluentIcons.info),
-                  text: const Text('Bilgiler'),
+                  text: _tabLabel(context, 'Bilgiler', 0),
                   body: InfoTab(building: widget.building),
                 ),
                 Tab(
                   icon: const Icon(FluentIcons.city_next),
-                  text: const Text('Birimler'),
+                  text: _tabLabel(context, 'Birimler', 1),
                   body: DepartmentsTab(building: widget.building),
                 ),
                 Tab(
                   icon: const Icon(FluentIcons.contact),
-                  text: const Text('Çalışanlar'),
+                  text: _tabLabel(context, 'Çalışanlar', 2),
                   body: EmployeesTab(building: widget.building),
                 ),
                 Tab(
                   icon: const Icon(FluentIcons.activity_feed),
-                  text: const Text('Enerji'),
+                  text: _tabLabel(context, 'Enerji', 3),
                   body: SensorsTab(building: widget.building),
             ),
                 Tab(
                   icon: const Icon(FluentIcons.group),
-                  text: const Text('Ziyaretçiler'),
+                  text: _tabLabel(context, 'Ziyaretçiler', 4),
                   body: VisitorsTab(building: widget.building),
                 ),
                 Tab(
                   icon: const Icon(FluentIcons.settings),
-                  text: const Text('Bakım'),
+                  text: _tabLabel(context, 'Bakım', 5),
                   body: MaintenanceTab(building: widget.building),
+                ),
+                Tab(
+                  icon: const Icon(FluentIcons.analytics_report),
+                  text: _tabLabel(context, 'Raporlar', 6),
+                  body: BuildingReportsTab(building: widget.building),
+                ),
+                Tab(
+                  icon: const Icon(FluentIcons.report_hacked),
+                  text: _tabLabel(context, 'Arızalar', 7),
+                  body: BuildingIssuesTab(building: widget.building),
                 ),
               ],
             ),
           ),
         ],
-      ),
     );
   }
 }
@@ -434,6 +486,20 @@ class _BuildingHeader extends StatelessWidget {
       }
     } catch (_) {}
     return null;
+  }
+
+  Future<Map<String, dynamic>?> _resolveManager() async {
+    final localManager = _getManager();
+    if (localManager != null) {
+      return localManager;
+    }
+
+    final managerId = building['manager_id']?.toString();
+    if (managerId == null || managerId.isEmpty) {
+      return null;
+    }
+
+    return EmployeeApiService().getEmployeeById(managerId);
   }
 
   Widget _buildPhoto({
@@ -559,7 +625,6 @@ class _BuildingHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final manager = _getManager();
     final workingHoursText = _getWorkingHoursText();
     final isOpen = _isOpenNow();
 
@@ -738,32 +803,49 @@ class _BuildingHeader extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-        Text(
-                                        manager != null
-                                            ? 'Bina Yöneticisi: ${manager['first_name'] ?? ''} ${manager['last_name'] ?? ''}'.trim()
-                                            : 'Bina Yöneticisi: Belirtilmemiş',
-                                        style: theme.typography.body,
-          ),
-                                      if (manager != null) ...[
-                                        const SizedBox(height: 4),
-        Text(
-                                          [
-                                            manager['phone'] ?? '',
-                                            manager['email'] ?? '',
-                                          ].where((e) => e.toString().isNotEmpty).join(' • '),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: theme.typography.caption?.copyWith(
-                                              color: theme.typography.caption?.color?.withOpacity(0.7),
-          ),
-        ),
+                                    FutureBuilder<Map<String, dynamic>?>(
+                                      future: _resolveManager(),
+                                      builder: (context, snapshot) {
+                                        final manager = snapshot.data;
+                                        final fullName =
+                                            '${manager?['first_name'] ?? ''} ${manager?['last_name'] ?? ''}'.trim();
+                                        final hasManager = manager != null && fullName.isNotEmpty;
+
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              snapshot.connectionState == ConnectionState.waiting
+                                                  ? 'Bina Yöneticisi: Yükleniyor...'
+                                                  : (hasManager
+                                                      ? 'Bina Yöneticisi: $fullName'
+                                                      : 'Bina Yöneticisi: Belirtilmemiş'),
+                                              style: theme.typography.body,
+                                            ),
+                                            if (hasManager) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                [
+                                                  manager['phone'] ?? '',
+                                                  manager['email'] ?? '',
+                                                ].where((e) => e.toString().isNotEmpty).join(' • '),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: theme.typography.caption?.copyWith(
+                                                  color: theme.typography.caption?.color?.withOpacity(0.7),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
       ],
-                      ],
-                    ),
-          ),
-        ],
-      ),
-                          ],
                         ),
               ),
             ],
@@ -860,79 +942,15 @@ class _BuildingHeader extends StatelessWidget {
           child: Builder(builder: (ctx) {
             final theme = FluentTheme.of(ctx);
             final accent = theme.accentColor;
-            return Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _HeaderAction(
-                  icon: FluentIcons.edit,
-                  label: 'Düzenle',
-                  color: accent,
-                  onTap: onEdit ?? () {},
-          ),
-                const SizedBox(width: 8),
-                _HeaderAction(
-                  icon: FluentIcons.delete,
-                  label: 'Sil',
-                  color: Colors.red,
-                  onTap: () {
-                    _showDeleteBuildingDialog(context);
-                  },
-            ),
-              ],
+            return AppEntityRowActions(
+              onEdit: onEdit ?? () {},
+              onDelete: () => _showDeleteBuildingDialog(context),
+              editColor: accent,
+              deleteColor: Colors.red,
             );
           }),
         ),
       ],
-    );
-  }
-}
-
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.35)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-        children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: FluentTheme.of(context)
-                  .typography
-                  .caption
-                  ?.copyWith(color: color, fontWeight: FontWeight.w600),
-          ),
-        ],
-        ),
-      ),
     );
   }
 }
