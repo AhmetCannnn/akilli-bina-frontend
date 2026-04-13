@@ -26,7 +26,13 @@ class BuildingIssuesTab extends ConsumerWidget {
     final issuesAsync = ref.watch(issueControllerProvider);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(vertical: AppUiTokens.space16),
+      // Web'de dikey scrollbar içerik üstüne bindiğinde sağdaki buton/kartlar kesilmesin.
+      padding: const EdgeInsets.fromLTRB(
+        0,
+        AppUiTokens.space16,
+        AppUiTokens.space12,
+        AppUiTokens.space16,
+      ),
       child: issuesAsync.when(
         loading: () =>
             const Center(child: Padding(padding: EdgeInsets.all(24), child: ProgressRing())),

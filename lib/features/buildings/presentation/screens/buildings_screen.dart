@@ -255,32 +255,71 @@ class _BuildingsTabsState extends ConsumerState<_BuildingsTabs> {
         // Merkezde filtre sekmeleri (buton grubu)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Stack(
-            alignment: Alignment.center,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Center(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: List.generate(_filters.length, (i) {
-                    final f = _filters[i];
-                    return _FilterButton(
-                      label: f['label'] as String,
-                      selected: _currentIndex == i,
-                      onPressed: () => setState(() => _currentIndex = i),
-                      theme: theme,
-                    );
-                  }),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppUiTokens.space12,
+                  vertical: AppUiTokens.space4,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.accentColor.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(AppUiTokens.radius12),
+                  border: Border.all(
+                    color: theme.accentColor.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      FluentIcons.city_next,
+                      size: AppUiTokens.iconMd,
+                      color: theme.accentColor,
+                    ),
+                    const SizedBox(width: AppUiTokens.space4),
+                    Text(
+                      '${filtered.length}',
+                      style: theme.typography.caption?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.accentColor,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Positioned(
-                right: 0,
-                child: EntityAddButton(
-                  label: 'Yeni Bina',
-                  tooltip: 'Yeni Bina',
-                  onPressed: () {
-                    AddBuildingModal.showAddBuildingModal(context, ref);
-                  },
+              const SizedBox(width: AppUiTokens.space8),
+              Expanded(
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Center(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: List.generate(_filters.length, (i) {
+                          final f = _filters[i];
+                          return _FilterButton(
+                            label: f['label'] as String,
+                            selected: _currentIndex == i,
+                            onPressed: () => setState(() => _currentIndex = i),
+                            theme: theme,
+                          );
+                        }),
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      child: EntityAddButton(
+                        label: 'Yeni Bina',
+                        tooltip: 'Yeni Bina',
+                        onPressed: () {
+                          AddBuildingModal.showAddBuildingModal(context, ref);
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

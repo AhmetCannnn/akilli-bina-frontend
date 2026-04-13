@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
 import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
@@ -5,9 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'add_maintenance_modal.dart';
 import '../providers/maintenance_provider.dart';
+import '../utils/maintenance_dialog_helpers.dart';
+import '../widgets/maintenance_entity_list_card.dart';
 import 'package:belediye_otomasyon/core/utils/modal_helpers.dart'
     show
-        showDeleteDialog,
         buildModalTitle,
         buildModalConstraints,
         showErrorDialog,
@@ -15,14 +18,16 @@ import 'package:belediye_otomasyon/core/utils/modal_helpers.dart'
         buildErrorCard;
 import '../../../../core/utils/api_error.dart';
 import '../../../../core/utils/backend_datetime.dart';
-import 'package:belediye_otomasyon/core/widgets/entity_action_buttons.dart';
 import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
 import '../../../../features/buildings/presentation/providers/building_provider.dart';
 import 'package:belediye_otomasyon/core/widgets/removable_tag.dart'
     show RemovableTag;
 
 class MaintenanceSuggestionsScreen extends ConsumerStatefulWidget {
-  const MaintenanceSuggestionsScreen({super.key});
+  const MaintenanceSuggestionsScreen({super.key, this.highlightMaintenanceId});
+
+  /// Ana sayfa vb. yönlendirmede bu kaydı çerçeveleyip listeye kaydırır.
+  final String? highlightMaintenanceId;
 
   @override
   ConsumerState<MaintenanceSuggestionsScreen> createState() => _MaintenanceSuggestionsScreenState();
@@ -31,6 +36,85 @@ class MaintenanceSuggestionsScreen extends ConsumerStatefulWidget {
 class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSuggestionsScreen> {
   String _selectedFilter = 'Tümü';
   final List<String> _filters = ['Tümü', 'Taslak', 'Planlandı', 'Tamamlandı'];
+  final GlobalKey _highlightKey = GlobalKey();
+  bool _scheduledHighlightScroll = false;
+  bool _highlightDecorationVisible = false;
+  Timer? _highlightDismissTimer;
+
+  static const Color _highlightTint = Color(0xFFC42B1C);
+  static const Duration _highlightDuration = Duration(seconds: 3);
+
+  void _armHighlightDismissTimer() {
+    _highlightDismissTimer?.cancel();
+    final hid = widget.highlightMaintenanceId?.trim();
+    if (hid == null || hid.isEmpty) {
+      _highlightDecorationVisible = false;
+      return;
+    }
+    _highlightDecorationVisible = true;
+    _highlightDismissTimer = Timer(_highlightDuration, () {
+      if (mounted) setState(() => _highlightDecorationVisible = false);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.highlightMaintenanceId != null &&
+        widget.highlightMaintenanceId!.trim().isNotEmpty) {
+      _selectedFilter = 'Tümü';
+      _armHighlightDismissTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    _highlightDismissTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant MaintenanceSuggestionsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.highlightMaintenanceId != widget.highlightMaintenanceId) {
+      _scheduledHighlightScroll = false;
+      if (widget.highlightMaintenanceId != null &&
+          widget.highlightMaintenanceId!.trim().isNotEmpty) {
+        _selectedFilter = 'Tümü';
+      }
+      _armHighlightDismissTimer();
+    }
+  }
+
+  void _scheduleHighlightScrollIntoView(List<Map<String, dynamic>> filtered) {
+    final hid = widget.highlightMaintenanceId?.trim();
+    if (hid == null || hid.isEmpty || _scheduledHighlightScroll) return;
+    final normalized = hid.toLowerCase();
+    bool idMatches(Map<String, dynamic> m) {
+      final raw = m['id'];
+      final s = raw == null ? '' : raw.toString().toLowerCase();
+      return s == normalized;
+    }
+
+    if (!filtered.any(idMatches)) return;
+    _scheduledHighlightScroll = true;
+    void tryScroll() {
+      if (!mounted) return;
+      final ctx = _highlightKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.12,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => tryScroll());
+    });
+  }
 
   List<Map<String, dynamic>> _getFilteredMaintenance(List<Map<String, dynamic>> allMaintenance) {
     if (_selectedFilter == 'Tümü') {
@@ -55,6 +139,10 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final maintenanceAsync = ref.watch(allMaintenanceProvider);
+    final totalCount = maintenanceAsync.maybeWhen(
+      data: (allMaintenance) => allMaintenance.length,
+      orElse: () => null,
+    );
     final horizontalPad = PageHeader.horizontalPadding(context);
 
     return AppScaffoldPage(
@@ -75,44 +163,84 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
                   Container(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(
-                          FluentIcons.filter,
-                          color: theme.accentColor,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Filtrele:',
-                          style: theme.typography.bodyStrong,
-                        ),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          width: 140,
-                          child: ComboBox<String>(
-                            value: _selectedFilter,
-                            items: _filters.map((filter) {
-                              return ComboBoxItem(
-                                value: filter,
-                                child: Text(filter),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                setState(() {
-                                  _selectedFilter = value;
-                                });
-                              }
-                            },
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppUiTokens.space12,
+                            vertical: AppUiTokens.space4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.accentColor.withOpacity(0.08),
+                            borderRadius:
+                                BorderRadius.circular(AppUiTokens.radius12),
+                            border: Border.all(
+                              color: theme.accentColor.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                FluentIcons.build_definition,
+                                size: AppUiTokens.iconMd,
+                                color: theme.accentColor,
+                              ),
+                              const SizedBox(width: AppUiTokens.space4),
+                              Text(
+                                totalCount != null ? '$totalCount' : '–',
+                                style: theme.typography.caption?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.accentColor,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const Spacer(),
-                        EntityAddButton(
-                          label: 'Bakım Ekle',
-                          tooltip: 'Bakım Ekle',
-                          onPressed: () {
-                            _showAddMaintenanceModal(context);
-                          },
+                        const SizedBox(width: AppUiTokens.space8),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Icon(
+                                FluentIcons.filter,
+                                color: theme.accentColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Filtrele:',
+                                style: theme.typography.bodyStrong,
+                              ),
+                              const SizedBox(width: 16),
+                              SizedBox(
+                                width: 140,
+                                child: ComboBox<String>(
+                                  value: _selectedFilter,
+                                  items: _filters.map((filter) {
+                                    return ComboBoxItem(
+                                      value: filter,
+                                      child: Text(filter),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      setState(() {
+                                        _selectedFilter = value;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                              const Spacer(),
+                              EntityAddButton(
+                                label: 'Bakım Ekle',
+                                tooltip: 'Bakım Ekle',
+                                onPressed: () {
+                                  _showAddMaintenanceModal(context);
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -122,7 +250,8 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
                   maintenanceAsync.when(
                     data: (allMaintenance) {
                       final filtered = _getFilteredMaintenance(allMaintenance);
-                      
+                      _scheduleHighlightScrollIntoView(filtered);
+
                       return Expanded(
                         child: Column(
                           children: [
@@ -202,11 +331,51 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
                                       itemCount: filtered.length,
                                       itemBuilder: (context, index) {
                                         final maintenance = filtered[index];
-                                        return _MaintenanceRecordCard(
-                                          maintenance: maintenance,
-                                          onViewDetails: () => _viewMaintenanceDetails(maintenance),
-                                          onEdit: () => _showEditMaintenanceModal(context, maintenance),
-                                          onDelete: () => _showDeleteMaintenanceDialog(context, maintenance),
+                                        final hid = widget.highlightMaintenanceId
+                                            ?.trim()
+                                            .toLowerCase();
+                                        final mid = (maintenance['id'] ?? '')
+                                            .toString()
+                                            .toLowerCase();
+                                        final idMatches =
+                                            hid != null && hid.isNotEmpty && mid == hid;
+                                        final isHighlighted =
+                                            idMatches && _highlightDecorationVisible;
+                                        return Container(
+                                          key: isHighlighted
+                                              ? _highlightKey
+                                              : ValueKey<String>(
+                                                  'maint_$mid',
+                                                ),
+                                          margin:
+                                              const EdgeInsets.only(bottom: 12),
+                                          decoration: isHighlighted
+                                              ? BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                  color: _highlightTint
+                                                      .withValues(alpha: 0.14),
+                                                )
+                                              : null,
+                                          padding: EdgeInsets.zero,
+                                          child: MaintenanceEntityListCard(
+                                            maintenance: maintenance,
+                                            onEdit: () =>
+                                                showEditMaintenanceDialog(
+                                              ref: ref,
+                                              context: context,
+                                              maintenance: maintenance,
+                                            ),
+                                            onDelete: () =>
+                                                showDeleteMaintenanceDialog(
+                                              ref: ref,
+                                              context: context,
+                                              maintenance: maintenance,
+                                            ),
+                                            onDetail: () =>
+                                                _viewMaintenanceDetails(
+                                                    maintenance),
+                                          ),
                                         );
                                       },
                                     ),
@@ -302,10 +471,8 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
         ? parseBackendDateTime(maintenance['updated_at'].toString())
         : null;
     final buildingId = maintenance['building_id'];
-    final id = maintenance['id']?.toString() ?? '';
     final performedBy = maintenance['performed_by']?.toString() ?? '';
     final notes = maintenance['notes']?.toString() ?? '';
-    final isDeleted = maintenance['is_deleted'] == true;
 
     // Resolve building name from provider if available
     String? buildingName;
@@ -318,10 +485,8 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
         (b) => b['id'] == buildingId,
         orElse: () => {},
       );
-      if (match is Map<String, dynamic>) {
-        buildingName = (match['name'] ?? '').toString();
-        buildingAddress = (match['address'] ?? '').toString();
-      }
+      buildingName = (match['name'] ?? '').toString();
+      buildingAddress = (match['address'] ?? '').toString();
     }
     
     showDialog(
@@ -355,10 +520,8 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
                               (b) => b['id'] == buildingId,
                               orElse: () => {},
                             );
-                            if (match is Map<String, dynamic>) {
-                              final nm = (match['name'] ?? '').toString();
-                              if (nm.isNotEmpty) label = nm;
-                            }
+                            final nm = (match['name'] ?? '').toString();
+                            if (nm.isNotEmpty) label = nm;
                           },
                           loading: () {},
                           error: (_, __) {},
@@ -523,100 +686,6 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
     }
   }
 
-  void _showEditMaintenanceModal(BuildContext context, Map<String, dynamic> maintenance) {
-    final formKey = GlobalKey<FormState>();
-    final maintenanceId = maintenance['id'] as String;
-    // Create a GlobalKey to access the modal's state - must be outside StatefulBuilder
-    final modalStateKey = GlobalKey<AddMaintenanceModalState>();
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        final theme = FluentTheme.of(ctx);
-        return ContentDialog(
-          constraints: buildModalConstraints(ctx, maxWidth: 700.0),
-          title: buildModalTitle('Bakım Düzenle', ctx),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: SingleChildScrollView(
-                  child: AddMaintenanceModal(
-                    key: modalStateKey,
-                    formKey: formKey,
-                    maintenance: maintenance,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Spacer(),
-                  FilledButton(
-                    child: const Text('Güncelle'),
-                    onPressed: () async {
-                      final form = formKey.currentState;
-                      if (form == null) return;
-                      if (!form.validate()) return;
-                      
-                      // Get form data from modal state
-                      final modalState = modalStateKey.currentState;
-                      if (modalState == null) return;
-                      
-                      final formData = modalState.getFormData();
-                      if (formData == null) return;
-                      
-                      try {
-                        await ref
-                            .read(maintenanceControllerProvider.notifier)
-                            .updateMaintenance(maintenanceId, formData);
-                        if (ctx.mounted) {
-                          Navigator.pop(ctx, true);
-                        }
-                      } catch (e) {
-                        final errorMessage =
-                            e.toString().replaceFirst('Exception: ', '');
-                        showErrorDialog(ctx, theme, 'Hata', errorMessage);
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: null,
-        );
-      },
-    ).then((_) {
-      if (context.mounted) {
-        showSuccessInfoBar(context, 'Bakım güncellendi.');
-      }
-    });
-  }
-
-  void _showDeleteMaintenanceDialog(BuildContext context, Map<String, dynamic> maintenance) {
-    final theme = FluentTheme.of(context);
-    final maintenanceId = maintenance['id'] as String;
-    final title = maintenance['title'] ?? 'Bakım Kaydı';
-    
-    showDeleteDialog(
-      context: context,
-      theme: theme,
-      title: 'Bakım Kaydını Sil',
-      message: '"$title" kaydını silmek istediğinize emin misiniz?',
-      onDelete: () async {
-        await ref
-            .read(maintenanceControllerProvider.notifier)
-            .deleteMaintenance(maintenanceId);
-        return true;
-      },
-      successMessage: '"$title" başarıyla silindi.',
-      // Liste, MaintenanceController.deleteMaintenance içindeki refreshMaintenance ile güncellenir.
-      onSuccess: () {},
-    );
-  }
-
   void _showAddMaintenanceModal(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     // Create a GlobalKey to access the modal's state
@@ -688,173 +757,4 @@ class _MaintenanceSuggestionsScreenState extends ConsumerState<MaintenanceSugges
     });
   }
 }
-
-class _MaintenanceRecordCard extends StatelessWidget {
-  const _MaintenanceRecordCard({
-    required this.maintenance,
-    required this.onViewDetails,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  final Map<String, dynamic> maintenance;
-  final VoidCallback onViewDetails;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  String _getStatusText(String status) {
-    switch (status) {
-      case 'taslak':
-        return 'Taslak';
-      case 'planlandı':
-        return 'Planlandı';
-      case 'tamamlandı':
-        return 'Tamamlandı';
-      default:
-        return status;
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'taslak':
-        return Colors.blue;
-      case 'planlandı':
-        return Colors.orange;
-      case 'tamamlandı':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  String _getMaintenanceTypeText(String type) {
-    switch (type) {
-      case 'rutin':
-        return 'Rutin';
-      case 'acil':
-        return 'Acil';
-      case 'planlı':
-        return 'Planlı';
-      default:
-        return type;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    final title = maintenance['title'] ?? 'Bakım Kaydı';
-    final description = maintenance['description'] ?? '';
-    final status = maintenance['status'] ?? 'scheduled';
-    final maintenanceType = maintenance['maintenance_type'] ?? '';
-    final String locText = maintenance['location']?.toString() ?? '';
-    final cost = maintenance['cost'];
-    final scheduledDate = maintenance['scheduled_date'] != null
-        ? parseBackendDateTime(maintenance['scheduled_date'].toString())
-        : null;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Başlık ve etiket aynı satırda hizalı
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: theme.typography.bodyStrong?.copyWith(fontSize: 16),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  RemovableTag(label: _getStatusText(status), color: _getStatusColor(status)),
-                ],
-              ),
-              if (description.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  description,
-                  style: theme.typography.body?.copyWith(
-                    color: theme.typography.body?.color?.withOpacity(0.8),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              if (locText.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(FluentIcons.map_pin, size: 14, color: theme.iconTheme.color?.withOpacity(0.7)),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        locText,
-                        style: theme.typography.caption?.copyWith(
-                          color: theme.typography.caption?.color?.withOpacity(0.8),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 12),
-              
-              Row(
-                children: [
-                  if (scheduledDate != null) ...[
-                    Icon(
-                      FluentIcons.calendar,
-                      size: 16,
-                      color: theme.iconTheme.color?.withOpacity(0.7),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${scheduledDate.day}/${scheduledDate.month}/${scheduledDate.year}',
-                      style: theme.typography.caption?.copyWith(
-                        color: theme.typography.caption?.color?.withOpacity(0.7),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                  ],
-                  if (cost != null) ...[
-                    Icon(
-                      FluentIcons.money,
-                      size: 16,
-                      color: theme.iconTheme.color?.withOpacity(0.7),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '₺${(cost is num ? cost : double.parse(cost.toString())).toStringAsFixed(0)}',
-                      style: theme.typography.caption?.copyWith(
-                        color: theme.accentColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                  const Spacer(),
-                  EntityActionButtons(
-                    width: 170,
-                    onEdit: onEdit,
-                    onDelete: onDelete,
-                    onDetail: onViewDetails,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-
 

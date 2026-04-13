@@ -3,6 +3,7 @@ import 'package:belediye_otomasyon/core/services/api_service.dart';
 import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
 import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
 import 'package:belediye_otomasyon/core/widgets/entity_action_buttons.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_list_card.dart';
 import 'package:belediye_otomasyon/core/utils/modal_helpers.dart'
     show
         buildModalTitle,
@@ -235,6 +236,51 @@ class _BuildingReportsTabState extends State<BuildingReportsTab> {
   String _shortDate(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 
+  Widget _buildReportListCard(Report report) {
+    return EntityListCard(
+      margin: const EdgeInsets.only(bottom: 10),
+      header: EntityListCardHeaderRow(
+        leading: EntityListCardLeadingIconBox(
+          icon: report.category.icon,
+          color: report.category.color,
+        ),
+        title: report.title,
+        subtitle: report.category.displayName,
+        trailing: EntityListCardHeaderPill(
+          label: report.status.displayName,
+          color: report.status.color,
+        ),
+      ),
+      description: report.description,
+      descriptionMaxLines: 2,
+      footer: Row(
+        children: [
+          EntityListCardMetaIconText(
+            icon: FluentIcons.contact,
+            text: report.createdByName ?? report.createdBy,
+          ),
+          const SizedBox(width: 16),
+          EntityListCardMetaIconText(
+            icon: FluentIcons.clock,
+            text: _shortDate(report.createdDate),
+          ),
+          const Spacer(),
+          EntityActionButtons(
+            width: report.status == ReportStatus.completed ? 280 : 170,
+            primaryLabel:
+                report.status == ReportStatus.completed ? 'Raporu Aç' : null,
+            onPrimary: report.status == ReportStatus.completed
+                ? () => _openFile(report)
+                : null,
+            onEdit: () => _editReport(report),
+            onDelete: () => _deleteReport(report),
+            onDetail: () => _details(report),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
@@ -307,64 +353,7 @@ class _BuildingReportsTabState extends State<BuildingReportsTab> {
               ),
             )
           else
-            ..._reports.map((report) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: AppUiTokens.space12),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppUiTokens.space16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(report.category.icon, color: report.category.color, size: 20),
-                            const SizedBox(width: AppUiTokens.space10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(report.title, style: theme.typography.bodyStrong),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    report.category.displayName,
-                                    style: theme.typography.caption?.copyWith(color: report.category.color),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (report.description.isNotEmpty) ...[
-                          const SizedBox(height: AppUiTokens.space8),
-                          Text(
-                            report.description,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.typography.body,
-                          ),
-                        ],
-                        const SizedBox(height: AppUiTokens.space8),
-                        Text(
-                          '${report.createdByName ?? report.createdBy} · ${_shortDate(report.createdDate)}',
-                          style: theme.typography.caption,
-                        ),
-                        const SizedBox(height: AppUiTokens.space12),
-                        EntityActionButtons(
-                          width: report.status == ReportStatus.completed ? 260 : 170,
-                          primaryLabel: report.status == ReportStatus.completed ? 'Aç' : null,
-                          onPrimary: report.status == ReportStatus.completed ? () => _openFile(report) : null,
-                          onEdit: () => _editReport(report),
-                          onDelete: () => _deleteReport(report),
-                          onDetail: () => _details(report),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
+            ..._reports.map(_buildReportListCard),
         ],
       ),
     );

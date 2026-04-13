@@ -1,3 +1,8 @@
+# Ortam (asla repoya commit etmeyin)
+.env
+.env.local
+.env.*.local
+
 # Miscellaneous
 *.class
 *.log

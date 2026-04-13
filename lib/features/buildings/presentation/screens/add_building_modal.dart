@@ -165,6 +165,8 @@ class AddBuildingModalState extends State<AddBuildingModal> {
   final _photoUrlController = TextEditingController();
   final _workingHoursOpenController = TextEditingController();
   final _workingHoursCloseController = TextEditingController();
+  final _latitudeController = TextEditingController();
+  final _longitudeController = TextEditingController();
   final List<String> _departments = [];
   final List<String> _facilities = [];
   
@@ -173,6 +175,7 @@ class AddBuildingModalState extends State<AddBuildingModal> {
   String? _selectedManagerId; // UUID string
   bool _workingHoursWeekend = false;
   bool _workingHoursHolidays = false;
+  bool _hasChiller = false;
   static const List<String> _buildingTypes = ['KOMEK', 'Müze', 'Hizmet Binası'];
   static const List<String> _statusOptions = ['active', 'inactive', 'under_maintenance', 'under_construction'];
   static const Map<String, String> _statusDisplayNames = {
@@ -211,6 +214,13 @@ class AddBuildingModalState extends State<AddBuildingModal> {
       _parkingController.text = data['parking_capacity']?.toString() ?? '';
       _descriptionController.text = data['description']?.toString() ?? '';
       _photoUrlController.text = data['photo_url']?.toString() ?? '';
+      _hasChiller = data['has_chiller'] == true;
+
+      final rawCoordinates = data['coordinates'];
+      if (rawCoordinates is List && rawCoordinates.length == 2) {
+        _latitudeController.text = rawCoordinates[0]?.toString() ?? '';
+        _longitudeController.text = rawCoordinates[1]?.toString() ?? '';
+      }
       
       // Building type
       _selectedType = data['building_type']?.toString() ?? 'KOMEK';
@@ -260,6 +270,8 @@ class AddBuildingModalState extends State<AddBuildingModal> {
     _photoUrlController,
     _workingHoursOpenController,
     _workingHoursCloseController,
+    _latitudeController,
+    _longitudeController,
   ];
 
   @override
@@ -273,6 +285,9 @@ class AddBuildingModalState extends State<AddBuildingModal> {
 
   // Form data'sını topla ve döndür
   Map<String, dynamic> getFormData() {
+    final parsedLat = double.tryParse(_latitudeController.text.trim());
+    final parsedLng = double.tryParse(_longitudeController.text.trim());
+
     final formData = {
       'name': _nameController.text.trim(),
       'address': _addressController.text.trim(),
@@ -285,6 +300,7 @@ class AddBuildingModalState extends State<AddBuildingModal> {
       'employee_count': 0, // Çalışan sayısı otomatik hesaplanır
       'asset_count': int.tryParse(_assetController.text) ?? 0,
       'parking_capacity': int.tryParse(_parkingController.text) ?? 0,
+      'has_chiller': _hasChiller,
       'departments': _departments,
       'facilities': _facilities,
       'status': _selectedStatus,
@@ -297,6 +313,11 @@ class AddBuildingModalState extends State<AddBuildingModal> {
       // Manager ID (FK to employees table)
       if (_selectedManagerId != null && _selectedManagerId!.isNotEmpty)
         'manager_id': _selectedManagerId,
+      if (parsedLat != null && parsedLng != null)
+        'coordinates': [
+          parsedLat,
+          parsedLng,
+        ],
     };
     
     // Callback ile form data'sını dışarıya gönder
@@ -524,6 +545,37 @@ class AddBuildingModalState extends State<AddBuildingModal> {
                   Expanded(child: buildFormTextField(label: 'Demirbaş Sayısı', controller: _assetController, placeholder: '0', onChanged: getFormData)),
                   Expanded(child: buildFormTextField(label: 'Otopark Kapasitesi', controller: _parkingController, placeholder: '0', onChanged: getFormData)),
                 ]),
+                _fieldSpacing,
+                buildFormRow([
+                  Expanded(
+                    child: buildFormTextField(
+                      label: 'Enlem (opsiyonel)',
+                      controller: _latitudeController,
+                      placeholder: '37.87',
+                      onChanged: getFormData,
+                    ),
+                  ),
+                  Expanded(
+                    child: buildFormTextField(
+                      label: 'Boylam (opsiyonel)',
+                      controller: _longitudeController,
+                      placeholder: '32.48',
+                      onChanged: getFormData,
+                    ),
+                  ),
+                ]),
+                _fieldSpacing,
+                InfoLabel(
+                  label: 'Chiller Sistemi',
+                  child: ToggleSwitch(
+                    checked: _hasChiller,
+                    content: const Text('Binada chiller sistemi var'),
+                    onChanged: (value) {
+                      setState(() => _hasChiller = value);
+                      getFormData();
+                    },
+                  ),
+                ),
                 _fieldSpacing,
                 InfoLabel(
                   label: 'Çalışma Saatleri',

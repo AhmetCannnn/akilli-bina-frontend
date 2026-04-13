@@ -1,7 +1,16 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
+import 'package:belediye_otomasyon/core/utils/modal_helpers.dart'
+    show
+        buildModalConstraints,
+        buildModalTitle,
+        showErrorDialog,
+        showSuccessInfoBar;
 import '../../../../maintenance/presentation/providers/maintenance_provider.dart';
-import '../../utils/building_helpers.dart';
+import '../../../../maintenance/presentation/utils/maintenance_dialog_helpers.dart';
+import '../../../../maintenance/presentation/screens/add_maintenance_modal.dart';
+import '../../../../maintenance/presentation/widgets/maintenance_entity_list_card.dart';
 import '../../providers/building_provider.dart';
 import 'package:belediye_otomasyon/core/widgets/removable_tag.dart' show RemovableTag;
 import 'package:belediye_otomasyon/core/utils/backend_datetime.dart';
@@ -24,7 +33,55 @@ class MaintenanceTab extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           maintenanceAsync.when(
-            data: (maintenanceList) => _MaintenanceList(maintenanceList: maintenanceList),
+            data: (maintenanceList) => Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppUiTokens.space12,
+                        vertical: AppUiTokens.space4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.accentColor.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(AppUiTokens.radius12),
+                        border:
+                            Border.all(color: theme.accentColor.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            FluentIcons.build_definition,
+                            size: AppUiTokens.iconMd,
+                            color: theme.accentColor,
+                          ),
+                          const SizedBox(width: AppUiTokens.space4),
+                          Text(
+                            '${maintenanceList.length}',
+                            style: theme.typography.caption?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.accentColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    EntityAddButton(
+                      label: 'Bakım Ekle',
+                      tooltip: 'Bu binaya bakım kaydı ekle',
+                      onPressed: () =>
+                          _showAddMaintenanceModal(context, ref, buildingId),
+                      size: AppControlSize.sm,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppUiTokens.space12),
+                _MaintenanceList(maintenanceList: maintenanceList),
+              ],
+            ),
             loading: () => const Center(child: ProgressRing()),
             error: (error, stack) => Card(
               child: Padding(
@@ -62,13 +119,13 @@ class MaintenanceTab extends ConsumerWidget {
   }
 }
 
-class _MaintenanceList extends StatelessWidget {
+class _MaintenanceList extends ConsumerWidget {
   const _MaintenanceList({required this.maintenanceList});
 
   final List<Map<String, dynamic>> maintenanceList;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = FluentTheme.of(context);
 
     if (maintenanceList.isEmpty) {
@@ -78,7 +135,6 @@ class _MaintenanceList extends StatelessWidget {
           child: Column(
             children: [
               Icon(
-                // Sidebar'daki \"Bakımlar\" sekmesi ile aynı ikon
                 FluentIcons.build_definition,
                 size: 48,
                 color: theme.iconTheme.color?.withOpacity(0.5),
@@ -103,179 +159,25 @@ class _MaintenanceList extends StatelessWidget {
       );
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppUiTokens.space16),
-        child: Column(
-          children: [
-            ...maintenanceList.map((maintenance) => Padding(
-              padding: const EdgeInsets.only(bottom: AppUiTokens.space16),
-              child: _MaintenanceItem(
-                maintenance: maintenance,
-              ),
-            )).toList(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  MaintenanceStatus _getMaintenanceStatus(String? status) {
-    switch (status) {
-      case 'taslak':
-        return MaintenanceStatus.draft;
-      case 'planlandı':
-        return MaintenanceStatus.planned;
-      case 'tamamlandı':
-        return MaintenanceStatus.done;
-      default:
-        return MaintenanceStatus.planned;
-    }
-  }
-}
-
-enum MaintenanceStatus {
-  draft,
-  planned,
-  done;
-
-  Color get color {
-    switch (this) {
-      case MaintenanceStatus.draft:
-        return Colors.blue; // Taslak - Mavi
-      case MaintenanceStatus.planned:
-        return Colors.orange; // Planlandı - Turuncu
-      case MaintenanceStatus.done:
-        return Colors.green; // Tamamlandı - Yeşil
-    }
-  }
-
-  String get text {
-    switch (this) {
-      case MaintenanceStatus.draft:
-        return 'Taslak';
-      case MaintenanceStatus.planned:
-        return 'Planlandı';
-      case MaintenanceStatus.done:
-        return 'Tamamlandı';
-    }
-  }
-}
-
-// Top-level helper to map status string to enum (reused by list items)
-MaintenanceStatus _mapMaintenanceStatus(String? status) {
-  switch (status) {
-    case 'taslak':
-      return MaintenanceStatus.draft;
-    case 'planlandı':
-      return MaintenanceStatus.planned;
-    case 'tamamlandı':
-      return MaintenanceStatus.done;
-    default:
-      return MaintenanceStatus.planned;
-  }
-}
-
-class _MaintenanceItem extends StatelessWidget {
-  const _MaintenanceItem({
-    required this.maintenance,
-  });
-
-  final Map<String, dynamic> maintenance;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-
-    final String title = maintenance['title'] ?? 'Bakım Kaydı';
-    final String? description = maintenance['description'];
-    final DateTime date = maintenance['scheduled_date'] != null
-        ? parseBackendDateTime(maintenance['scheduled_date'].toString())
-        : DateTime.now();
-    final MaintenanceStatus status = _mapMaintenanceStatus(maintenance['status']);
-    final double? cost = (maintenance['cost'] is num)
-        ? (maintenance['cost'] as num).toDouble()
-        : (maintenance['cost'] != null
-            ? double.tryParse(maintenance['cost'].toString())
-            : null);
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => _openMaintenanceDetailModal(context, maintenance),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(
-          AppUiTokens.space12,
-          AppUiTokens.space8,
-          AppUiTokens.space12,
-          AppUiTokens.space12,
-        ),
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: theme.iconTheme.color?.withOpacity(0.1) ?? Colors.grey.withOpacity(0.1),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final maintenance in maintenanceList)
+          MaintenanceEntityListCard(
+            maintenance: maintenance,
+            onEdit: () => showEditMaintenanceDialog(
+              ref: ref,
+              context: context,
+              maintenance: maintenance,
+            ),
+            onDelete: () => showDeleteMaintenanceDialog(
+              ref: ref,
+              context: context,
+              maintenance: maintenance,
+            ),
+            onDetail: () => _openMaintenanceDetailModal(context, maintenance),
           ),
-          borderRadius: BorderRadius.circular(AppUiTokens.radius8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: theme.typography.bodyStrong,
-                      ),
-                      if (description != null) ...[
-                        const SizedBox(height: AppUiTokens.space4),
-                        Text(
-                          description,
-                          style: theme.typography.caption?.copyWith(
-                            color: theme.typography.caption?.color?.withOpacity(0.7),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppUiTokens.space12),
-                RemovableTag(label: status.text, color: status.color),
-              ],
-            ),
-            const SizedBox(height: AppUiTokens.space8),
-            Row(
-              children: [
-                Icon(
-                  FluentIcons.calendar,
-                  size: 14,
-                  color: theme.iconTheme.color?.withOpacity(0.6),
-                ),
-                const SizedBox(width: AppUiTokens.space4),
-                Text(
-                  '${date.day}/${date.month}/${date.year}',
-                  style: theme.typography.caption?.copyWith(
-                    color: theme.iconTheme.color?.withOpacity(0.7),
-                  ),
-                ),
-                if (cost != null) ...[
-                  const SizedBox(width: AppUiTokens.space16),
-                  Text(
-                    '₺${cost.toStringAsFixed(0)}',
-                    style: theme.typography.caption?.copyWith(
-                      color: theme.accentColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
@@ -369,10 +271,8 @@ void _openMaintenanceDetailModal(
                             (b) => b['id'] == buildingId,
                             orElse: () => {},
                           );
-                          if (match is Map<String, dynamic>) {
-                            final nm = (match['name'] ?? '').toString();
-                            if (nm.isNotEmpty) label = nm;
-                          }
+                          final nm = (match['name'] ?? '').toString();
+                          if (nm.isNotEmpty) label = nm;
                         },
                         loading: () {},
                         error: (_, __) {},
@@ -444,6 +344,76 @@ void _openMaintenanceDetailModal(
       actions: null,
     ),
   );
+}
+
+void _showAddMaintenanceModal(
+  BuildContext context,
+  WidgetRef ref,
+  int buildingId,
+) {
+  final formKey = GlobalKey<FormState>();
+  final modalStateKey = GlobalKey<AddMaintenanceModalState>();
+
+  showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) {
+      final theme = FluentTheme.of(ctx);
+      return ContentDialog(
+        constraints: buildModalConstraints(ctx, maxWidth: 700.0),
+        title: buildModalTitle('Bakım Ekle', ctx),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: SingleChildScrollView(
+                child: AddMaintenanceModal(
+                  key: modalStateKey,
+                  formKey: formKey,
+                  maintenance: {'building_id': buildingId},
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Spacer(),
+                FilledButton(
+                  child: const Text('Kaydet'),
+                  onPressed: () async {
+                    final form = formKey.currentState;
+                    if (form == null || !form.validate()) return;
+
+                    final modalState = modalStateKey.currentState;
+                    if (modalState == null) return;
+
+                    final formData = modalState.getFormData();
+                    if (formData == null) return;
+
+                    try {
+                      await ref
+                          .read(maintenanceControllerProvider.notifier)
+                          .createMaintenance(formData);
+                      if (ctx.mounted) Navigator.pop(ctx, true);
+                    } catch (e) {
+                      final errorMessage =
+                          e.toString().replaceFirst('Exception: ', '');
+                      showErrorDialog(ctx, theme, 'Hata', errorMessage);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: null,
+      );
+    },
+  ).then((isSaved) {
+    if (context.mounted && isSaved == true) {
+      showSuccessInfoBar(context, 'Bakım eklendi.');
+    }
+  });
 }
 
 String _statusText(String status) {

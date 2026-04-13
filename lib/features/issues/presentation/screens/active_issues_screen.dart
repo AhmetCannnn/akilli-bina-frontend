@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/issue_provider.dart';
@@ -10,6 +12,7 @@ import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
 import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
 import 'package:belediye_otomasyon/core/widgets/entity_action_buttons.dart';
 import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_list_card.dart';
 import '../../domain/models/issue.dart';
 import 'report_issue_modal.dart';
 import 'package:belediye_otomasyon/core/widgets/removable_tag.dart' show RemovableTag;
@@ -69,7 +72,10 @@ void openInterventionDetailModal(BuildContext context, Issue issue) {
 }
 
 class ActiveIssuesScreen extends ConsumerStatefulWidget {
-  const ActiveIssuesScreen({super.key});
+  const ActiveIssuesScreen({super.key, this.highlightIssueId});
+
+  /// Ana sayfa vb. yönlendirmede bu kaydı çerçeveleyip listeye kaydırır.
+  final String? highlightIssueId;
 
   @override
   ConsumerState<ActiveIssuesScreen> createState() => _ActiveIssuesScreenState();
@@ -78,6 +84,78 @@ class ActiveIssuesScreen extends ConsumerStatefulWidget {
 class _ActiveIssuesScreenState extends ConsumerState<ActiveIssuesScreen> {
   String _selectedFilter = 'Tümü';
   final List<String> _filters = ['Tümü', 'Kritik', 'Yüksek', 'Orta', 'Düşük'];
+  final GlobalKey _highlightKey = GlobalKey();
+  bool _scheduledHighlightScroll = false;
+  bool _highlightDecorationVisible = false;
+  Timer? _highlightDismissTimer;
+
+  static const Color _highlightTint = Color(0xFFC42B1C);
+  static const Duration _highlightDuration = Duration(seconds: 3);
+
+  void _armHighlightDismissTimer() {
+    _highlightDismissTimer?.cancel();
+    final hid = widget.highlightIssueId?.trim();
+    if (hid == null || hid.isEmpty) {
+      _highlightDecorationVisible = false;
+      return;
+    }
+    _highlightDecorationVisible = true;
+    _highlightDismissTimer = Timer(_highlightDuration, () {
+      if (mounted) setState(() => _highlightDecorationVisible = false);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.highlightIssueId != null && widget.highlightIssueId!.trim().isNotEmpty) {
+      _selectedFilter = 'Tümü';
+      _armHighlightDismissTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    _highlightDismissTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant ActiveIssuesScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.highlightIssueId != widget.highlightIssueId) {
+      _scheduledHighlightScroll = false;
+      if (widget.highlightIssueId != null && widget.highlightIssueId!.trim().isNotEmpty) {
+        _selectedFilter = 'Tümü';
+      }
+      _armHighlightDismissTimer();
+    }
+  }
+
+  void _scheduleHighlightScrollIntoView(List<Issue> filtered) {
+    final hid = widget.highlightIssueId?.trim();
+    if (hid == null || hid.isEmpty || _scheduledHighlightScroll) return;
+    final normalized = hid.toLowerCase();
+    final has = filtered.any((i) => i.id.toLowerCase() == normalized);
+    if (!has) return;
+    _scheduledHighlightScroll = true;
+    void tryScroll() {
+      if (!mounted) return;
+      final ctx = _highlightKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.12,
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => tryScroll());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,39 +196,81 @@ class _ActiveIssuesScreenState extends ConsumerState<ActiveIssuesScreen> {
                 data: (items) {
                   final apiIssues = _mapFromApi(items, buildingIdToName, buildingIdToAddress);
                   final filtered = _filteredIssuesOf(apiIssues);
+                  final totalCount = apiIssues.length;
+                  _scheduleHighlightScrollIntoView(filtered);
 
                   return Column(
           children: [
             Container(
               padding: const EdgeInsets.only(bottom: 16),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Icon(
-                    FluentIcons.filter,
-                    color: theme.accentColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                            Text('Filtrele:', style: theme.typography.bodyStrong),
-                  const SizedBox(width: 16),
-                      SizedBox(
-                        width: 140,
-                        child: ComboBox<String>(
-                      value: _selectedFilter,
-                                items: _filters
-                                    .map((f) => ComboBoxItem(value: f, child: Text(f)))
-                                    .toList(),
-                                onChanged: (v) => setState(() => _selectedFilter = v ?? _selectedFilter),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppUiTokens.space12,
+                      vertical: AppUiTokens.space4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.accentColor.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(AppUiTokens.radius12),
+                      border: Border.all(
+                        color: theme.accentColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          FluentIcons.warning,
+                          size: AppUiTokens.iconMd,
+                          color: theme.accentColor,
+                        ),
+                        const SizedBox(width: AppUiTokens.space4),
+                        Text(
+                          '$totalCount',
+                          style: theme.typography.caption?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.accentColor,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  EntityAddButton(
-                    label: 'Arıza Bildirimi Ekle',
-                    tooltip: 'Arıza Bildirimi Ekle',
-                    onPressed: () {
-                      showReportIssueModal(context, ref);
-                      ref.read(issueControllerProvider.notifier).refreshIssues();
-                    },
+                  const SizedBox(width: AppUiTokens.space8),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(
+                          FluentIcons.filter,
+                          color: theme.accentColor,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text('Filtrele:', style: theme.typography.bodyStrong),
+                        const SizedBox(width: 16),
+                        SizedBox(
+                          width: 140,
+                          child: ComboBox<String>(
+                            value: _selectedFilter,
+                            items: _filters
+                                .map((f) => ComboBoxItem(value: f, child: Text(f)))
+                                .toList(),
+                            onChanged: (v) =>
+                                setState(() => _selectedFilter = v ?? _selectedFilter),
+                          ),
+                        ),
+                        const Spacer(),
+                        EntityAddButton(
+                          label: 'Arıza Bildirimi Ekle',
+                          tooltip: 'Arıza Bildirimi Ekle',
+                          onPressed: () {
+                            showReportIssueModal(context, ref);
+                            ref.read(issueControllerProvider.notifier).refreshIssues();
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -228,52 +348,66 @@ class _ActiveIssuesScreenState extends ConsumerState<ActiveIssuesScreen> {
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final issue = filtered[index];
-                        return IssueCard(
-                          issue: issue,
-                          onEdit: () => openIssueEditUsingReportModal(context, ref, issue),
-                          onAddIntervention: () => openInterventionModal(context, ref, issue, isEdit: true),
-                          onDeleteIntervention: () {
-                            final theme = FluentTheme.of(context);
-                            showDeleteDialog(
-                              context: context,
-                              theme: theme,
-                              title: 'Müdahaleyi Sil',
-                              message: '"${issue.title}" için müdahale bilgilerini silmek istediğinize emin misiniz?',
-                              onDelete: () async {
-                                await ref.read(issueControllerProvider.notifier).updateIssue(
-                                  issue.id,
-                                  {
-                                    'status': IssueStatus.pending.apiValue,
-                                    'assigned_to': null,
-                                    'intervention_assignee': null,
-                                    'intervention_note': null,
-                                    'intervention_at': null,
-                                    'estimated_cost': null,
-                                    'actual_cost': null,
-                                    'resolved_at': null,
-                                  },
-                                );
-                                return true;
-                              },
-                              successMessage: 'Müdahale bilgileri silindi.',
-                              onSuccess: null,
-                            );
-                          },
-                          onDelete: () {
-                            final theme = FluentTheme.of(context);
-                            showDeleteDialog(
-                              context: context,
-                              theme: theme,
-                              title: 'Arızayı Sil',
-                              message: '"${issue.title}" kaydını silmek istediğinize emin misiniz?',
-                              onDelete: () async {
-                                await ref.read(issueControllerProvider.notifier).deleteIssue(issue.id);
-                                return true;
-                              },
-                              successMessage: '"${issue.title}" başarıyla silindi.',
-                              onSuccess: null, // Provider zaten listeyi yeniliyor
-                            );
-                          },
+                        final hid = widget.highlightIssueId?.trim().toLowerCase();
+                        final idMatches =
+                            hid != null && hid.isNotEmpty && issue.id.toLowerCase() == hid;
+                        final isHighlighted = idMatches && _highlightDecorationVisible;
+                        return Container(
+                          key: isHighlighted ? _highlightKey : ValueKey<String>('issue_${issue.id}'),
+                          decoration: isHighlighted
+                              ? BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: _highlightTint.withValues(alpha: 0.14),
+                                )
+                              : null,
+                          padding: EdgeInsets.zero,
+                          child: IssueCard(
+                            issue: issue,
+                            onEdit: () => openIssueEditUsingReportModal(context, ref, issue),
+                            onAddIntervention: () => openInterventionModal(context, ref, issue, isEdit: true),
+                            onDeleteIntervention: () {
+                              final theme = FluentTheme.of(context);
+                              showDeleteDialog(
+                                context: context,
+                                theme: theme,
+                                title: 'Müdahaleyi Sil',
+                                message: '"${issue.title}" için müdahale bilgilerini silmek istediğinize emin misiniz?',
+                                onDelete: () async {
+                                  await ref.read(issueControllerProvider.notifier).updateIssue(
+                                    issue.id,
+                                    {
+                                      'status': IssueStatus.pending.apiValue,
+                                      'assigned_to': null,
+                                      'intervention_assignee': null,
+                                      'intervention_note': null,
+                                      'intervention_at': null,
+                                      'estimated_cost': null,
+                                      'actual_cost': null,
+                                      'resolved_at': null,
+                                    },
+                                  );
+                                  return true;
+                                },
+                                successMessage: 'Müdahale bilgileri silindi.',
+                                onSuccess: null,
+                              );
+                            },
+                            onDelete: () {
+                              final theme = FluentTheme.of(context);
+                              showDeleteDialog(
+                                context: context,
+                                theme: theme,
+                                title: 'Arızayı Sil',
+                                message: '"${issue.title}" kaydını silmek istediğinize emin misiniz?',
+                                onDelete: () async {
+                                  await ref.read(issueControllerProvider.notifier).deleteIssue(issue.id);
+                                  return true;
+                                },
+                                successMessage: '"${issue.title}" başarıyla silindi.',
+                                onSuccess: null, // Provider zaten listeyi yeniliyor
+                              );
+                            },
+                          ),
                         );
                       },
                     ),
@@ -295,8 +429,15 @@ class _ActiveIssuesScreenState extends ConsumerState<ActiveIssuesScreen> {
 
   List<Issue> _filteredIssuesOf(List<Issue> source) {
     if (_selectedFilter == 'Tümü') return source;
-    final key = _selectedFilter.toLowerCase();
-    return source.where((i) => i.priority.name == key).toList();
+    final want = switch (_selectedFilter) {
+      'Kritik' => IssuePriority.critical,
+      'Yüksek' => IssuePriority.high,
+      'Orta' => IssuePriority.medium,
+      'Düşük' => IssuePriority.low,
+      _ => null,
+    };
+    if (want == null) return source;
+    return source.where((i) => i.priority == want).toList();
   }
 
   Widget _buildStatCard(
@@ -423,6 +564,15 @@ double? _parseCost(String s) {
   return double.tryParse(t);
 }
 
+/// `/buildings/{id}/employees` cevabı `first_name` / `last_name` döner; `name` yok.
+String _employeeListDisplayName(Map<String, dynamic> e) {
+  final fn = (e['first_name'] ?? '').toString().trim();
+  final ln = (e['last_name'] ?? '').toString().trim();
+  final full = '$fn $ln'.trim();
+  if (full.isNotEmpty) return full;
+  return (e['name'] ?? '').toString().trim();
+}
+
 void openInterventionModal(BuildContext context, WidgetRef ref, Issue issue, {bool isEdit = false}) {
   final theme = FluentTheme.of(context);
   final TextEditingController note = TextEditingController(text: isEdit ? (issue.interventionNote ?? '') : '');
@@ -536,10 +686,11 @@ void openInterventionModal(BuildContext context, WidgetRef ref, Issue issue, {bo
               future: EmployeeApiService().getEmployeesByBuildingId(issue.buildingId!),
               builder: (context, snapshot) {
                 final employees = snapshot.data ?? [];
-                // id -> name map
+                // id -> görünen ad (API: first_name + last_name)
                 final Map<String, String> idToName = {
                   for (final e in employees)
-                    if (e['id'] != null) e['id'].toString(): (e['name'] ?? '').toString(),
+                    if (e['id'] != null)
+                      e['id'].toString(): _employeeListDisplayName(e),
                 };
                 // Preselect name if we have id
                 if (selectedEmployeeId != null && selectedEmployeeName == null) {
@@ -577,6 +728,13 @@ void openInterventionModal(BuildContext context, WidgetRef ref, Issue issue, {bo
                               const SizedBox(height: 6),
                               if (snapshot.connectionState == ConnectionState.waiting)
                                 const ProgressRing()
+                              else if (idToName.isEmpty)
+                                Text(
+                                  'Bu binaya kayıtlı çalışan yok.',
+                                  style: theme.typography.caption?.copyWith(
+                                    color: theme.typography.caption?.color?.withOpacity(0.8),
+                                  ),
+                                )
                               else
                                 ComboBox<String>(
                                   value: selectedEmployeeId,
@@ -694,16 +852,21 @@ void showIssueDetailModal(BuildContext context, Issue issue) {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Üst satır: ID + durum + öncelik
+              // Yan yana: bina → öncelik → durum (durum grupta en sağ)
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  RemovableTag(label: issue.id, color: theme.accentColor),
-                  if (issue.buildingName != null)
+                  if ((issue.buildingName ?? '').isNotEmpty)
                     RemovableTag(label: issue.buildingName!, color: Colors.blue),
-                  RemovableTag(label: issue.status.displayName, color: issue.status.color),
-                  RemovableTag(label: issue.priority.displayName, color: issue.priority.color),
+                  RemovableTag(
+                    label: issue.priority.displayName,
+                    color: issue.priority.color,
+                  ),
+                  RemovableTag(
+                    label: issue.status.displayName,
+                    color: issue.status.color,
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -746,10 +909,6 @@ void showIssueDetailModal(BuildContext context, Issue issue) {
                             if (issue.reporterEmail != null) issue.reporterEmail!,
                           ].where((e) => e.isNotEmpty).join(' • '),
                         ),
-                      ],
-                      if (issue.assignedTo != null) ...[
-                        const SizedBox(height: 8),
-                        _InfoRow(icon: FluentIcons.contact, label: 'Atanan', value: issue.assignedTo!),
                       ],
                     ],
                   ),
@@ -819,7 +978,7 @@ class IssueCard extends StatelessWidget {
     final theme = FluentTheme.of(context);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -827,91 +986,96 @@ class IssueCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        RemovableTag(label: issue.priority.displayName, color: issue.priority.color),
-                        RemovableTag(label: issue.status.displayName, color: issue.status.color),
-                        RemovableTag(label: issue.id, color: issue.priority.color),
-                        if ((issue.buildingName ?? '').isNotEmpty)
-                          RemovableTag(label: issue.buildingName!, color: Colors.blue),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            issue.title,
-                            style: theme.typography.bodyStrong?.copyWith(fontSize: 16),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      issue.description,
-                      style: theme.typography.body?.copyWith(
-                        color: theme.typography.body?.color?.withOpacity(0.8),
+                child: EntityListCard(
+                  wrapInCard: false,
+                  padding: EdgeInsets.zero,
+                  margin: EdgeInsets.zero,
+                  header: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      EntityListCardLeadingIconBox(
+                        icon: FluentIcons.report_hacked,
+                        color: issue.priority.color,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(FluentIcons.location, size: 16, color: theme.iconTheme.color?.withOpacity(0.7)),
-                        const SizedBox(width: 4),
-                        Text(
-                          issue.location,
-                          style: theme.typography.caption?.copyWith(
-                            color: theme.typography.caption?.color?.withOpacity(0.7),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Icon(FluentIcons.tag, size: 16, color: theme.iconTheme.color?.withOpacity(0.7)),
-                        const SizedBox(width: 4),
-                        Text(
-                          issue.category,
-                          style: theme.typography.caption?.copyWith(
-                            color: theme.typography.caption?.color?.withOpacity(0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(FluentIcons.clock, size: 16, color: theme.iconTheme.color?.withOpacity(0.7)),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatDate(issue.reportDate),
-                          style: theme.typography.caption?.copyWith(
-                            color: theme.typography.caption?.color?.withOpacity(0.7),
-                          ),
-                        ),
-                        if (issue.assignedTo != null) ...[
-                          const SizedBox(width: 16),
-                          Icon(FluentIcons.contact, size: 16, color: theme.iconTheme.color?.withOpacity(0.7)),
-                          const SizedBox(width: 4),
-                          Text(
-                            issue.assignedTo!,
-                            style: theme.typography.caption?.copyWith(
-                              color: theme.typography.caption?.color?.withOpacity(0.7),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                issue.title,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.typography.bodyStrong?.copyWith(
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
+                            const SizedBox(width: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.end,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if ((issue.buildingName ?? '').isNotEmpty)
+                                    RemovableTag(
+                                      label: issue.buildingName!,
+                                      color: Colors.blue,
+                                    ),
+                                  RemovableTag(
+                                    label: issue.priority.displayName,
+                                    color: issue.priority.color,
+                                  ),
+                                  RemovableTag(
+                                    label: issue.status.displayName,
+                                    color: issue.status.color,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  description: issue.description,
+                  footer: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          EntityListCardMetaIconText(
+                            icon: FluentIcons.location,
+                            text: issue.location,
+                          ),
+                          const SizedBox(width: 16),
+                          EntityListCardMetaIconText(
+                            icon: FluentIcons.tag,
+                            text: issue.category,
                           ),
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    EntityActionButtons(
-                      onEdit: onEdit,
-                      onDelete: onDelete,
-                      onDetail: () => showIssueDetailModal(context, issue),
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          EntityListCardMetaIconText(
+                            icon: FluentIcons.clock,
+                            text: _formatDate(issue.reportDate),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      EntityActionButtons(
+                        onEdit: onEdit,
+                        onDelete: onDelete,
+                        onDetail: () => showIssueDetailModal(context, issue),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -919,10 +1083,11 @@ class IssueCard extends StatelessWidget {
                 width: 280,
                 child: Builder(
                   builder: (ctx) {
-                    final isSummary = issue.status == IssueStatus.inProgress || issue.status == IssueStatus.resolved;
+                    final isSummary = issue.status == IssueStatus.inProgress ||
+                        issue.status == IssueStatus.resolved;
                     if (isSummary) {
                       return Card(
-          child: Padding(
+                        child: Padding(
                           padding: const EdgeInsets.all(12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -934,7 +1099,9 @@ class IssueCard extends StatelessWidget {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    issue.interventionAssignee ?? issue.assignedTo ?? 'Atama yok',
+                                    issue.interventionAssignee ??
+                                        issue.assignedTo ??
+                                        'Atama yok',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: theme.typography.caption,
@@ -946,18 +1113,26 @@ class IssueCard extends StatelessWidget {
                                 const Icon(FluentIcons.clock, size: 14),
                                 const SizedBox(width: 6),
                                 Text(
-                                  issue.interventionAt != null ? _formatDateTime(issue.interventionAt!) : '—',
+                                  issue.interventionAt != null
+                                      ? _formatDateTime(issue.interventionAt!)
+                                      : '—',
                                   style: theme.typography.caption,
                                 ),
                               ]),
                               const SizedBox(height: 6),
                               if ((issue.interventionNote ?? '').isNotEmpty)
-                                Text(issue.interventionNote!, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.typography.body),
+                                Text(
+                                  issue.interventionNote!,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.typography.body,
+                                ),
                               const SizedBox(height: 8),
                               EntityActionButtons(
                                 onEdit: onAddIntervention,
                                 onDelete: onDeleteIntervention,
-                                onDetail: () => openInterventionDetailModal(context, issue),
+                                onDetail: () =>
+                                    openInterventionDetailModal(context, issue),
                               ),
                             ],
                           ),
@@ -972,9 +1147,15 @@ class IssueCard extends StatelessWidget {
                           children: [
                             Text('Müdahale', style: theme.typography.bodyStrong),
                             const SizedBox(height: 8),
-                            Text('Bu arıza için henüz müdahale bilgisi yok.', style: theme.typography.caption),
+                            Text(
+                              'Bu arıza için henüz müdahale bilgisi yok.',
+                              style: theme.typography.caption,
+                            ),
                             const SizedBox(height: 8),
-                            FilledButton(onPressed: onAddIntervention, child: const Text('Müdahale Ekle')),
+                            FilledButton(
+                              onPressed: onAddIntervention,
+                              child: const Text('Müdahale Ekle'),
+                            ),
                           ],
                         ),
                       ),

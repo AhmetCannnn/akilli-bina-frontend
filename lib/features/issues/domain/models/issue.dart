@@ -143,11 +143,12 @@ extension IssuePriorityX on IssuePriority {
 
   /// API'den gelen string değerini IssuePriority'a dönüştürür
   static IssuePriority fromApiValue(String? value) {
-    return switch (value?.toLowerCase()) {
-      'critical' => IssuePriority.critical,
-      'high' => IssuePriority.high,
-      'low' => IssuePriority.low,
-      'medium' => IssuePriority.medium,
+    final v = value?.trim().toLowerCase();
+    return switch (v) {
+      'critical' || 'kritik' => IssuePriority.critical,
+      'high' || 'yüksek' => IssuePriority.high,
+      'low' || 'düşük' => IssuePriority.low,
+      'medium' || 'orta' => IssuePriority.medium,
       _ => IssuePriority.medium,
     };
   }
@@ -187,7 +188,8 @@ extension IssueStatusX on IssueStatus {
 
   /// API'den gelen string değerini IssueStatus'a dönüştürür
   static IssueStatus fromApiValue(String? value) {
-    return switch (value?.toLowerCase()) {
+    final v = value?.trim().toLowerCase();
+    return switch (v) {
       'in_progress' => IssueStatus.inProgress,
       'resolved' => IssueStatus.resolved,
       'pending' => IssueStatus.pending,

@@ -1,4 +1,3 @@
-// Dummy data import removed - now using backend data
 import 'package:belediye_otomasyon/features/issues/presentation/screens/active_issues_screen.dart';
 import 'package:belediye_otomasyon/features/buildings/presentation/screens/building_detail_screen.dart';
 import 'package:belediye_otomasyon/features/buildings/presentation/screens/buildings_screen.dart';
@@ -13,8 +12,24 @@ import 'package:belediye_otomasyon/features/employees/presentation/screens/emplo
 import 'package:belediye_otomasyon/features/navigation/presentation/widgets/app_shell.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+const _publicPaths = {'/', '/register', '/invite/complete'};
 
 final GoRouter router = GoRouter(
+  redirect: (BuildContext context, GoRouterState state) async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasToken = prefs.getString('access_token')?.isNotEmpty ?? false;
+    final currentPath = state.matchedLocation;
+
+    if (!hasToken && !_publicPaths.contains(currentPath)) {
+      return '/';
+    }
+    if (hasToken && (currentPath == '/' || currentPath == '/register')) {
+      return '/home';
+    }
+    return null;
+  },
   routes: <RouteBase>[
     GoRoute(
       path: '/',

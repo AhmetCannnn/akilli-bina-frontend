@@ -56,6 +56,18 @@ class EnergyApiService {
     }
     return results;
   }
+
+  /// Tüm binalar için enerji zaman serisi özeti (homepage)
+  Future<EnergySummaryTimeseries> getSummaryTimeseries({
+    required String range,
+  }) async {
+    final response = await _apiService.get(
+      '/energy/summary-timeseries',
+      queryParameters: {'range': range},
+    );
+    final data = Map<String, dynamic>.from(response.data);
+    return EnergySummaryTimeseries.fromJson(data);
+  }
 }
 
 class EnergyPredictionResult {
@@ -67,4 +79,48 @@ class EnergyPredictionResult {
   final DateTime timestamp;
   final double predictedKwh;
   final int meter;
+}
+
+class EnergySeriesPoint {
+  const EnergySeriesPoint({
+    required this.periodStart,
+    required this.total,
+  });
+
+  final DateTime periodStart;
+  final double total;
+
+  factory EnergySeriesPoint.fromJson(Map<String, dynamic> json) {
+    return EnergySeriesPoint(
+      periodStart: DateTime.parse(json['period_start'] as String),
+      total: (json['total'] as num).toDouble(),
+    );
+  }
+}
+
+class EnergySummaryTimeseries {
+  const EnergySummaryTimeseries({
+    required this.range,
+    required this.electricity,
+    required this.water,
+  });
+
+  final String range;
+  final List<EnergySeriesPoint> electricity;
+  final List<EnergySeriesPoint> water;
+
+  factory EnergySummaryTimeseries.fromJson(Map<String, dynamic> json) {
+    List<EnergySeriesPoint> parseList(String key) {
+      final raw = (json[key] as List?) ?? const [];
+      return raw
+          .map((e) => EnergySeriesPoint.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+
+    return EnergySummaryTimeseries(
+      range: (json['range'] ?? 'monthly').toString(),
+      electricity: parseList('electricity'),
+      water: parseList('water'),
+    );
+  }
 }

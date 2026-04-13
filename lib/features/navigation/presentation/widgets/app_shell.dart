@@ -1,9 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:belediye_otomasyon/theme/theme_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:belediye_otomasyon/features/home/presentation/widgets/ai_assistant_modal.dart';
 import 'package:belediye_otomasyon/features/auth/presentation/providers/auth_provider.dart';
+import 'package:belediye_otomasyon/core/realtime/realtime_ws_client.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child, required this.shellContext});
@@ -16,6 +18,20 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final authAsync = ref.read(authControllerProvider);
+      if (!authAsync.isLoading && !authAsync.hasError) {
+        RealtimeWsClient.syncAuth(ref, authAsync.valueOrNull);
+      }
+    });
+  }
+
   String _roleLabel(String? role) {
     switch ((role ?? '').toLowerCase()) {
       case 'manager':
@@ -53,6 +69,17 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<AuthState?>>(authControllerProvider, (prev, next) {
+      if (next.isLoading) {
+        return;
+      }
+      if (next.hasError) {
+        RealtimeWsClient.disconnect();
+        return;
+      }
+      RealtimeWsClient.syncAuth(ref, next.valueOrNull);
+    });
+
     final isDarkMode = ref.watch(themeProvider) == ThemeMode.dark;
     final theme = FluentTheme.of(context);
     final authState = ref.watch(authControllerProvider);
@@ -62,6 +89,14 @@ class _AppShellState extends ConsumerState<AppShell> {
     final selectedIndex = _calculateSelectedIndex(context);
 
     return NavigationView(
+      // GoRouter child tek örnek; tüm PaneItem.body'ye aynı widget vermek PageView'da
+      // aynı alt ağacı birden çok kez bağlar ve GlobalKey çakışmasına yol açar.
+      paneBodyBuilder: (item, body) {
+        return FocusTraversalGroup(
+          policy: WidgetOrderTraversalPolicy(),
+          child: widget.child,
+        );
+      },
       pane: NavigationPane(
         selected: selectedIndex,
         onChanged: (index) {
@@ -91,32 +126,32 @@ class _AppShellState extends ConsumerState<AppShell> {
           PaneItem(
             icon: const Icon(FluentIcons.home),
             title: const Text('Ana Sayfa'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
           ),
           PaneItem(
             icon: const Icon(FluentIcons.city_next),
             title: const Text('Binalar'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
           ),
           PaneItem(
             icon: const Icon(FluentIcons.warning),
             title: const Text('Arızalar'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
           ),
           PaneItem(
             icon: const Icon(FluentIcons.build_definition),
             title: const Text('Bakımlar'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
           ),
           PaneItem(
             icon: const Icon(FluentIcons.analytics_report),
             title: const Text('Raporlar'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
           ),
           PaneItem(
             icon: const Icon(FluentIcons.people),
             title: const Text('Çalışanlar'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
           ),
         ],
         footerItems: [
@@ -140,14 +175,14 @@ class _AppShellState extends ConsumerState<AppShell> {
               overflow: TextOverflow.ellipsis,
               style: theme.typography.bodyStrong,
             ),
-            body: widget.child,
+            body: const SizedBox.shrink(),
             onTap: () {},
           ),
           PaneItemSeparator(),
           PaneItem(
             icon: const Icon(FluentIcons.robot),
             title: const Text('AI Asistan'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
             onTap: () {
               AIAssistantModal.show(context);
             },
@@ -157,7 +192,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               isDarkMode ? FluentIcons.brightness : FluentIcons.sunny,
             ),
             title: Text(isDarkMode ? 'Açık Tema' : 'Koyu Tema'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
             onTap: () {
               ref.read(themeProvider.notifier).toggleTheme();
             },
@@ -165,13 +200,13 @@ class _AppShellState extends ConsumerState<AppShell> {
           PaneItem(
             icon: const Icon(FluentIcons.settings),
             title: const Text('Ayarlar'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
             onTap: () => context.go('/settings'),
           ),
           PaneItem(
             icon: const Icon(FluentIcons.sign_out),
             title: const Text('Çıkış Yap'),
-            body: widget.child,
+            body: const SizedBox.shrink(),
             onTap: () {
               // Global auth standardı: tokenları temizle + backend logout çağır
               ref.read(authControllerProvider.notifier).logout();

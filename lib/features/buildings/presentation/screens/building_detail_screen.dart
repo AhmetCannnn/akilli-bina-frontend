@@ -385,14 +385,14 @@ class _BuildingDetailTabsState extends State<_BuildingDetailTabs> {
                   body: MaintenanceTab(building: widget.building),
                 ),
                 Tab(
-                  icon: const Icon(FluentIcons.analytics_report),
-                  text: _tabLabel(context, 'Raporlar', 6),
-                  body: BuildingReportsTab(building: widget.building),
+                  icon: const Icon(FluentIcons.report_hacked),
+                  text: _tabLabel(context, 'Arızalar', 6),
+                  body: BuildingIssuesTab(building: widget.building),
                 ),
                 Tab(
-                  icon: const Icon(FluentIcons.report_hacked),
-                  text: _tabLabel(context, 'Arızalar', 7),
-                  body: BuildingIssuesTab(building: widget.building),
+                  icon: const Icon(FluentIcons.analytics_report),
+                  text: _tabLabel(context, 'Raporlar', 7),
+                  body: BuildingReportsTab(building: widget.building),
                 ),
               ],
             ),
@@ -871,8 +871,8 @@ class _BuildingHeader extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: 24,
-          right: 8,
+          top: 20,
+          right: 16,
           child: Builder(
             builder: (context) {
               // CO₂e değeri backend'den gelecek
@@ -883,56 +883,103 @@ class _BuildingHeader extends StatelessWidget {
                 _ => 84.0,
               };
               final Color co2Color = co2TodayKg < 100
-                  ? Colors.green
-                  : (co2TodayKg < 200 ? Colors.orange : Colors.red);
-    return Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: co2Color.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-          child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
+                  ? const Color(0xFF2FB06E)
+                  : (co2TodayKg < 200
+                        ? const Color(0xFFE6973D)
+                        : const Color(0xFFE25757));
+              const greenScoreProgress = 0.72;
+              final greenScorePct = (greenScoreProgress * 100).round();
+              final Color greenScoreColor = greenScoreProgress >= 0.8
+                  ? const Color(0xFF24A765)
+                  : (greenScoreProgress >= 0.6
+                        ? const Color(0xFFE6973D)
+                        : const Color(0xFFE25757));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                          'Karbon Ayak İzi',
-                          style: FluentTheme.of(context)
-                              .typography
-                              .caption
-                              ?.copyWith(fontWeight: FontWeight.w600),
+                'Karbon Ayak İzi',
+                style: FluentTheme.of(context).typography.caption?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: FluentTheme.of(context).typography.caption?.color?.withOpacity(0.78),
+                ),
               ),
               const SizedBox(height: 4),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(FluentIcons.trending12, size: 16, color: co2Color),
-                            const SizedBox(width: 6),
-              Text(
-                              '${co2TodayKg.toStringAsFixed(0)} kgCO₂e',
-                              style: FluentTheme.of(context).typography.bodyStrong,
-                ),
-                          ],
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: co2Color,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${co2TodayKg.toStringAsFixed(0)} kgCO₂e',
+                    style: FluentTheme.of(context).typography.bodyStrong?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: co2Color.withOpacity(0.95),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ),
-                  const SizedBox(width: 14),
-                  const _GreenScore(progress: 0.72, size: 96),
+          Container(
+            width: 1,
+            height: 28,
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            color: Colors.black.withOpacity(0.08),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Yeşil Skor',
+                style: FluentTheme.of(context).typography.caption?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: FluentTheme.of(context).typography.caption?.color?.withOpacity(0.78),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: greenScoreColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '%$greenScorePct',
+                    style: FluentTheme.of(context).typography.bodyStrong?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: greenScoreColor.withOpacity(0.95),
+                    ),
+                  ),
                 ],
-              );
+              ),
+            ],
+          ),
+        ],
+        ),
+      ),
+    );
             },
           ),
         ),
@@ -955,34 +1002,3 @@ class _BuildingHeader extends StatelessWidget {
   }
 }
 
-class _GreenScore extends StatelessWidget {
-  const _GreenScore({required this.progress, this.size = 68});
-
-  final double progress; // 0..1
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = (progress * 100).round();
-    final Color color = progress >= 0.8
-        ? Colors.green
-        : (progress >= 0.6 ? Colors.orange : Colors.red);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(color: color.withOpacity(0.25), blurRadius: 8, spreadRadius: 0),
-        ],
-        borderRadius: BorderRadius.circular(40),
-      ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          ProgressRing(value: progress * 100, activeColor: color),
-          Text('%$pct', style: FluentTheme.of(context).typography.caption),
-        ],
-      ),
-    );
-  }
-}

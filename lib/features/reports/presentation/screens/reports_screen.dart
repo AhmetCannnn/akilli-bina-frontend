@@ -14,6 +14,8 @@ import 'package:belediye_otomasyon/core/design/ui_tokens.dart';
 import 'package:belediye_otomasyon/core/widgets/app_scaffold_page.dart';
 import 'package:belediye_otomasyon/core/widgets/entity_action_buttons.dart';
 import 'package:belediye_otomasyon/core/widgets/entity_add_button.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_list_card.dart';
+import 'package:belediye_otomasyon/core/widgets/entity_tag.dart';
 import 'package:belediye_otomasyon/core/utils/backend_datetime.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -126,47 +128,86 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 children: [
                   // Filtre
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Icon(
-                        FluentIcons.filter,
-                        color: theme.accentColor,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Filtrele:',
-                        style: theme.typography.bodyStrong,
-                      ),
-                      const SizedBox(width: 16),
-                      SizedBox(
-                        width: 140,
-                        child: ComboBox<String>(
-                          value: _selectedFilter,
-                          items: _filters.map((filter) {
-                            return ComboBoxItem(
-                              value: filter,
-                              child: Text(filter),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedFilter = value;
-                              });
-                            }
-                          },
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppUiTokens.space12,
+                          vertical: AppUiTokens.space4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.accentColor.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(AppUiTokens.radius12),
+                          border: Border.all(
+                            color: theme.accentColor.withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              FluentIcons.analytics_report,
+                              size: AppUiTokens.iconMd,
+                              color: theme.accentColor,
+                            ),
+                            const SizedBox(width: AppUiTokens.space4),
+                            Text(
+                              '${_reports.length}',
+                              style: theme.typography.caption?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.accentColor,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const Spacer(),
-                      EntityAddButton(
-                        label: 'Rapor Ekle',
-                        tooltip: 'Rapor Ekle',
-                        onPressed: () async {
-                          final created = await _showCreateReportModal(context);
-                          if (created == true) {
-                            await _loadReports();
-                          }
-                        },
+                      const SizedBox(width: AppUiTokens.space8),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(
+                              FluentIcons.filter,
+                              color: theme.accentColor,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Filtrele:',
+                              style: theme.typography.bodyStrong,
+                            ),
+                            const SizedBox(width: 16),
+                            SizedBox(
+                              width: 140,
+                              child: ComboBox<String>(
+                                value: _selectedFilter,
+                                items: _filters.map((filter) {
+                                  return ComboBoxItem(
+                                    value: filter,
+                                    child: Text(filter),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _selectedFilter = value;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                            const Spacer(),
+                            EntityAddButton(
+                              label: 'Rapor Ekle',
+                              tooltip: 'Rapor Ekle',
+                              onPressed: () async {
+                                final created = await _showCreateReportModal(context);
+                                if (created == true) {
+                                  await _loadReports();
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -252,13 +293,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               itemCount: _filteredReports.length,
                               itemBuilder: (context, index) {
                                 final report = _filteredReports[index];
-                                return _ReportCard(
-                                  report: report,
-                                  onOpen: () => _openReport(report),
-                                  onEdit: () => _editReport(report),
-                                  onDetails: () => _showReportDetails(report),
-                                  onDelete: () => _deleteReport(report),
-                                );
+                                return _buildReportListCard(report);
                               },
                             ),
             ),
@@ -269,6 +304,92 @@ class _ReportsScreenState extends State<ReportsScreen> {
   ),
       ),
     );
+  }
+
+  Widget _buildReportListCard(Report report) {
+    final theme = FluentTheme.of(context);
+    return EntityListCard(
+      header: EntityListCardHeaderRow(
+        leading: EntityListCardLeadingIconBox(
+          icon: report.category.icon,
+          color: report.category.color,
+        ),
+        title: report.title,
+        subtitle: report.buildingName ?? 'Genel Rapor',
+        trailing: EntityListCardHeaderPill(
+          label: report.category.displayName,
+          color: report.category.color,
+        ),
+      ),
+      description: report.description,
+      footer: Row(
+        children: [
+          EntityListCardMetaIconText(
+            icon: FluentIcons.contact,
+            text: report.createdByName ?? report.createdBy,
+          ),
+          const SizedBox(width: 16),
+          EntityListCardMetaIconText(
+            icon: FluentIcons.clock,
+            text: _formatReportListDate(report.createdDate),
+          ),
+          const SizedBox(width: 16),
+          if (report.fileUrl != null) ...[
+            Icon(
+              _getFileIcon(report.fileUrl!),
+              size: 16,
+              color: theme.iconTheme.color?.withOpacity(0.7),
+            ),
+            const SizedBox(width: 4),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 350),
+              child: Tooltip(
+                message: _getCleanFileName(report.fileUrl!),
+                child: Text(
+                  _getCleanFileName(report.fileUrl!),
+                  style: theme.typography.caption?.copyWith(
+                    color: theme.typography.caption?.color?.withOpacity(0.7),
+                  ),
+                  softWrap: false,
+                  overflow: TextOverflow.visible,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+          ],
+          if (report.fileSize != null) ...[
+            const SizedBox(width: 16),
+            Icon(
+              FluentIcons.hard_drive,
+              size: 16,
+              color: theme.iconTheme.color?.withOpacity(0.7),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              report.fileSize!,
+              style: theme.typography.caption?.copyWith(
+                color: theme.typography.caption?.color?.withOpacity(0.7),
+              ),
+            ),
+          ],
+          const Spacer(),
+          EntityActionButtons(
+            width: report.status == ReportStatus.completed ? 280 : 170,
+            primaryLabel:
+                report.status == ReportStatus.completed ? 'Raporu Aç' : null,
+            onPrimary:
+                report.status == ReportStatus.completed ? () => _openReport(report) : null,
+            onEdit: () => _editReport(report),
+            onDelete: () => _deleteReport(report),
+            onDetail: () => _showReportDetails(report),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatReportListDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _buildStatCard(
@@ -477,8 +598,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   runSpacing: 8,
                   children: [
                     if (report.buildingName != null)
-                      _ReportTag(label: report.buildingName!, color: theme.accentColor),
-                    _ReportTag(
+                      EntityTag(label: report.buildingName!, color: theme.accentColor),
+                    EntityTag(
                       label: report.category.displayName,
                       color: report.category.color,
                     ),
@@ -620,32 +741,6 @@ String _formatDateForDetails(DateTime date) {
   }
 }
 
-class _ReportTag extends StatelessWidget {
-  const _ReportTag({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        label,
-        style: theme.typography.caption?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
 class _ReportInfoRow extends StatelessWidget {
   const _ReportInfoRow({
     required this.icon,
@@ -685,206 +780,6 @@ class _ReportInfoRow extends StatelessWidget {
       ],
     );
   }
-}
-
-class _ReportCard extends StatelessWidget {
-  const _ReportCard({
-    required this.report,
-    required this.onOpen,
-    required this.onEdit,
-    required this.onDetails,
-    required this.onDelete,
-  });
-
-  final Report report;
-  final VoidCallback onOpen;
-  final VoidCallback onEdit;
-  final VoidCallback onDetails;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: report.category.color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      report.category.icon,
-                      color: report.category.color,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          report.title,
-                          style: theme.typography.bodyStrong?.copyWith(
-                            fontSize: 16,
-                  ),
-                ),
-                Text(
-                          report.buildingName ?? 'Genel Rapor',
-                          style: theme.typography.caption?.copyWith(
-                            color: theme.typography.caption?.color?.withOpacity(0.7),
-                            overflow: TextOverflow.visible,
-                          ),
-                          softWrap: false,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: report.category.color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      report.category.displayName,
-                      style: theme.typography.caption?.copyWith(
-                        color: report.category.color,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-              
-              Text(
-                report.description,
-                style: theme.typography.body?.copyWith(
-                  color: theme.typography.body?.color?.withOpacity(0.8),
-                ),
-              ),
-              const SizedBox(height: 12),
-              
-              Row(
-                children: [
-                  Icon(
-                    FluentIcons.contact,
-                    size: 16,
-                    color: theme.iconTheme.color?.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    report.createdByName ?? report.createdBy,
-                    style: theme.typography.caption?.copyWith(
-                      color: theme.typography.caption?.color?.withOpacity(0.7),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Icon(
-                    FluentIcons.clock,
-                    size: 16,
-                    color: theme.iconTheme.color?.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _formatDate(report.createdDate),
-                    style: theme.typography.caption?.copyWith(
-                      color: theme.typography.caption?.color?.withOpacity(0.7),
-                    ),
-                  ),
-                    const SizedBox(width: 16),
-                  if (report.fileUrl != null) ...[
-                    Icon(
-                      _getFileIcon(report.fileUrl!),
-                      size: 16,
-                      color: theme.iconTheme.color?.withOpacity(0.7),
-                    ),
-                    const SizedBox(width: 4),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 350),
-                      child: Tooltip(
-                        message: _getCleanFileName(report.fileUrl!),
-                        child: Text(
-                          _getCleanFileName(report.fileUrl!),
-                          style: theme.typography.caption?.copyWith(
-                            color: theme.typography.caption?.color?.withOpacity(0.7),
-                          ),
-                          softWrap: false,
-                          overflow: TextOverflow.visible,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                  ],
-                  if (report.fileSize != null) ...[
-                    const SizedBox(width: 16),
-                    Icon(
-                      FluentIcons.hard_drive,
-                      size: 16,
-                      color: theme.iconTheme.color?.withOpacity(0.7),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      report.fileSize!,
-                      style: theme.typography.caption?.copyWith(
-                        color: theme.typography.caption?.color?.withOpacity(0.7),
-                ),
-              ),
-                  ],
-                  const Spacer(),
-                  EntityActionButtons(
-                    width: report.status == ReportStatus.completed ? 280 : 170,
-                    primaryLabel:
-                        report.status == ReportStatus.completed ? 'Raporu Aç' : null,
-                    onPrimary:
-                        report.status == ReportStatus.completed ? onOpen : null,
-                    onEdit: onEdit,
-                    onDelete: onDelete,
-                    onDetail: onDetails,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-  }
-}
-
-String _getCleanFileName(String url) {
-  final fullName = url.split('/').last;
-  
-  final parts = fullName.split('_');
-  
-  // Yeni format: {ReportID}_{ShortID}_{OriginalName} -> 3+ parça
-  if (parts.length >= 3) {
-    return parts.sublist(2).join('_');
-  }
-  
-  // Eski format (UUID) temizleme:
-  // Eğer isim 30 karakterden uzunsa ve '-' içeriyorsa (UUID formatı)
-  if (fullName.length > 30 && fullName.contains('-')) {
-    final ext = fullName.split('.').last;
-    return 'Rapor Dosyası ($ext)';
-  }
-  
-  return fullName;
 }
 
 IconData _getFileIcon(String url) {
