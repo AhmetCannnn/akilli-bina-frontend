@@ -9,6 +9,8 @@ RUN flutter pub get
 
 COPY . .
 
+RUN touch .env
+
 # Build-time: canlı API adresinizi Coolify/GitHub Actions build arg ile verin
 ARG API_BASE_URL
 ARG API_CONNECT_TIMEOUT_MS=10000
